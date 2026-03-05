@@ -1,0 +1,224 @@
+import { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { User, Briefcase, Mail, Globe, Save, Lock } from 'lucide-react';
+
+const Settings = () => {
+    const { userRole, userName, login } = useAuth();
+
+    // Form State
+    const [name, setName] = useState(userName);
+    const [email, setEmail] = useState('user@example.com'); // Mock current email
+    const [companyName, setCompanyName] = useState('Acme Corp'); // Mock company data
+    const [companyWebsite, setCompanyWebsite] = useState('https://acme.com');
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+
+    const [isSaving, setIsSaving] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+
+    const handleSaveProfile = (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        setSuccessMessage('');
+
+        // Simulate API save
+        setTimeout(() => {
+            login(userRole, name); // Update the name in context
+            setIsSaving(false);
+            setSuccessMessage('Profile details updated successfully.');
+
+            // Clear success message after 3 seconds
+            setTimeout(() => setSuccessMessage(''), 3000);
+        }, 1000);
+    };
+
+    const handlePasswordChange = (e: React.FormEvent) => {
+        e.preventDefault();
+        // Mock password change logic here
+        setCurrentPassword('');
+        setNewPassword('');
+        setSuccessMessage('Password changed successfully.');
+        setTimeout(() => setSuccessMessage(''), 3000);
+    };
+
+    return (
+        <div className="min-h-screen pt-24 pb-12 bg-slate-50 dark:bg-slate-950">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+
+                <div className="mb-8">
+                    <h1 className="text-3xl font-heading font-extrabold text-slate-900 dark:text-white mb-2">Account Settings</h1>
+                    <p className="text-slate-600 dark:text-slate-400 text-sm">Update your personal information and password.</p>
+                </div>
+
+                {successMessage && (
+                    <div className="mb-6 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+                        <p className="text-sm font-medium">{successMessage}</p>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                    {/* Main Profile Form */}
+                    <div className="lg:col-span-2 space-y-6">
+                        <div className="glass-card p-6 md:p-8">
+                            <h2 className="text-xl font-bold font-heading text-slate-900 dark:text-white mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">Personal Information</h2>
+
+                            <form onSubmit={handleSaveProfile} className="space-y-5">
+                                <div>
+                                    <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <User className="h-5 w-5 text-slate-400" />
+                                        </div>
+                                        <input
+                                            id="name"
+                                            type="text"
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            required
+                                            className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all font-medium"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email Address</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <Mail className="h-5 w-5 text-slate-400" />
+                                        </div>
+                                        <input
+                                            id="email"
+                                            type="email"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            required
+                                            className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 cursor-not-allowed transition-all font-medium"
+                                            disabled
+                                            title="Email cannot be changed."
+                                        />
+                                    </div>
+                                </div>
+
+                                {userRole === 'recruiter' && (
+                                    <>
+                                        <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+                                            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Company Details</h3>
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="companyName" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Company Name</label>
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <Briefcase className="h-5 w-5 text-slate-400" />
+                                                </div>
+                                                <input
+                                                    id="companyName"
+                                                    type="text"
+                                                    value={companyName}
+                                                    onChange={(e) => setCompanyName(e.target.value)}
+                                                    className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all font-medium"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="companyWebsite" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Company Website</label>
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <Globe className="h-5 w-5 text-slate-400" />
+                                                </div>
+                                                <input
+                                                    id="companyWebsite"
+                                                    type="url"
+                                                    value={companyWebsite}
+                                                    onChange={(e) => setCompanyWebsite(e.target.value)}
+                                                    className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all font-medium"
+                                                />
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="pt-4 flex justify-end">
+                                    <button
+                                        type="submit"
+                                        disabled={isSaving}
+                                        className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 border border-transparent text-white py-2.5 px-5 rounded-xl text-sm font-medium transition-colors shadow-sm disabled:opacity-70"
+                                    >
+                                        {isSaving ? (
+                                            <>
+                                                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Save className="w-4 h-4" /> Save Changes
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    {/* Sidebar Area: Password Change */}
+                    <div className="lg:col-span-1 space-y-6">
+                        <div className="glass-card p-6 border-red-100 dark:border-red-900/30">
+                            <h2 className="text-lg font-bold font-heading text-slate-900 dark:text-white mb-6 border-b border-slate-100 dark:border-slate-800 pb-3">Security</h2>
+
+                            <form onSubmit={handlePasswordChange} className="space-y-4">
+                                <div>
+                                    <label htmlFor="currentPassword" className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Current Password</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <Lock className="h-4 w-4 text-slate-400" />
+                                        </div>
+                                        <input
+                                            id="currentPassword"
+                                            type="password"
+                                            value={currentPassword}
+                                            onChange={(e) => setCurrentPassword(e.target.value)}
+                                            required
+                                            className="block w-full pl-9 pr-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all font-medium"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label htmlFor="newPassword" className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">New Password</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <Lock className="h-4 w-4 text-slate-400" />
+                                        </div>
+                                        <input
+                                            id="newPassword"
+                                            type="password"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            required
+                                            className="block w-full pl-9 pr-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all font-medium"
+                                        />
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    className="w-full mt-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white py-2 px-4 rounded-lg text-sm font-semibold transition-colors border border-slate-200 dark:border-slate-700"
+                                >
+                                    Update Password
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default Settings;
