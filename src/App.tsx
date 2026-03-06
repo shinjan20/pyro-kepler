@@ -40,6 +40,9 @@ function App() {
               <Route path="/completed-projects" element={<ProtectedStudentRoute><CompletedProjects /></ProtectedStudentRoute>} />
               <Route path="/dashboard/recruiter" element={<RecruiterDashboard />} />
               <Route path="/settings" element={<Settings />} />
+
+              {/* Catch-all route for unknown paths */}
+              <Route path="*" element={<Home />} />
             </Routes>
           </main>
           <Footer />

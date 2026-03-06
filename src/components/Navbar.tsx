@@ -23,6 +23,25 @@ const Navbar = () => {
 
     const isActive = (path: string) => location.pathname === path;
 
+    const handleHowItWorksClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        setIsOpen(false);
+        if (location.pathname === '/') {
+            const element = document.getElementById('how-it-works');
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+            }
+        } else {
+            navigate('/');
+            setTimeout(() => {
+                const element = document.getElementById('how-it-works');
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                }
+            }, 100);
+        }
+    };
+
     const handleLogout = () => {
         logout();
         setShowProfileMenu(false);
@@ -61,7 +80,7 @@ const Navbar = () => {
                             <Link to="/projects" className={`${isActive('/projects') ? 'text-brand-600 dark:text-brand-400 font-bold' : 'text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 font-medium'} transition-colors`}>Find WFH Projects</Link>
                         )}
                         {!isAuthenticated && (
-                            <a href="#how-it-works" className="text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 font-medium transition-colors">How it Works</a>
+                            <button onClick={handleHowItWorksClick} className="text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 font-medium transition-colors">How it Works</button>
                         )}
                         {isAuthenticated && userRole === 'student' && (
                             <>
@@ -217,7 +236,7 @@ const Navbar = () => {
                             <Link to="/projects" onClick={() => setIsOpen(false)} className={`block px-3 py-3 rounded-lg text-base ${isActive('/projects') ? 'font-bold text-brand-600 bg-slate-50 dark:bg-slate-800/50' : 'font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Find Projects</Link>
                         )}
                         {!isAuthenticated && (
-                            <a href="#how-it-works" onClick={() => setIsOpen(false)} className="block px-3 py-3 rounded-lg text-base font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">How it Works</a>
+                            <button onClick={handleHowItWorksClick} className="block w-full text-left px-3 py-3 rounded-lg text-base font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">How it Works</button>
                         )}
                         {isAuthenticated && userRole === 'student' && (
                             <>

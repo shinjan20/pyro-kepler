@@ -2,7 +2,7 @@ import { Search, FileEdit, Award } from 'lucide-react';
 
 const HowItWorks = () => {
     return (
-        <section id="how-it-works" className="py-16 md:py-24 bg-slate-50 dark:bg-slate-950">
+        <section id="how-it-works" className="py-16 md:py-24 bg-slate-50 dark:bg-slate-950 scroll-mt-20 md:scroll-mt-28">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
                     <h2 className="text-3xl md:text-4xl font-heading font-bold text-slate-900 dark:text-white mb-4">
@@ -13,9 +13,9 @@ const HowItWorks = () => {
                     </p>
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-12 relative">
-                    {/* Connecting line (hidden on mobile) */}
-                    <div className="hidden md:block absolute top-12 left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-brand-100 via-brand-500 to-brand-100 dark:from-brand-900 dark:via-brand-500 dark:to-brand-900 z-0 opacity-50"></div>
+                <div className="grid lg:grid-cols-3 gap-12 relative">
+                    {/* Connecting line (hidden on mobile/tablet) */}
+                    <div className="hidden lg:block absolute top-[72px] left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-brand-100 via-brand-500 to-brand-100 dark:from-brand-900 dark:via-brand-500 dark:to-brand-900 z-0 opacity-50"></div>
 
                     {[
                         {
