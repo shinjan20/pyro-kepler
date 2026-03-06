@@ -8,12 +8,15 @@ interface StudentProfileModalProps {
     onClose: () => void;
     profile: StudentProfile | null;
     hasActiveProjects: boolean;
+    activeProjects?: any[];
     onPostProjectClick: () => void;
+    onMessageInitiated?: (projectId: string, candidateId: string, message: string) => void;
 }
 
-const StudentProfileModal = ({ isOpen, onClose, profile, hasActiveProjects, onPostProjectClick }: StudentProfileModalProps) => {
+const StudentProfileModal = ({ isOpen, onClose, profile, hasActiveProjects, activeProjects = [], onPostProjectClick, onMessageInitiated }: StudentProfileModalProps) => {
     const [isMessaging, setIsMessaging] = useState(false);
     const [messageText, setMessageText] = useState('');
+    const [selectedProjectId, setSelectedProjectId] = useState('');
     const [messageSent, setMessageSent] = useState(false);
     const [error, setError] = useState('');
     const { containsProfanity } = useProfanityFilter();
@@ -31,13 +34,19 @@ const StudentProfileModal = ({ isOpen, onClose, profile, hasActiveProjects, onPo
     if (!isOpen || !profile) return null;
 
     const handleSendMessage = () => {
-        if (!messageText.trim() || error) return;
-        // Simulate sending a message
+        if (!messageText.trim() || error || !selectedProjectId) return;
+
+        if (onMessageInitiated && profile) {
+            onMessageInitiated(selectedProjectId, profile.id, messageText);
+        }
+
         setMessageSent(true);
         setTimeout(() => {
             setIsMessaging(false);
             setMessageSent(false);
             setMessageText('');
+            setSelectedProjectId('');
+            onClose();
         }, 2500);
     };
 
@@ -45,6 +54,7 @@ const StudentProfileModal = ({ isOpen, onClose, profile, hasActiveProjects, onPo
         setIsMessaging(false);
         setMessageSent(false);
         setMessageText('');
+        setSelectedProjectId('');
         setError('');
         onClose();
     };
@@ -71,53 +81,53 @@ const StudentProfileModal = ({ isOpen, onClose, profile, hasActiveProjects, onPo
                     /* UNLOCKED FULL PROFILE */
                     <div>
                         {/* Header Banner */}
-                        <div className="h-32 bg-gradient-to-r from-brand-500 to-purple-600 w-full relative">
+                        <div className="h-20 bg-gradient-to-r from-brand-500 to-purple-600 w-full relative">
                             {/* Decorative pattern overlays could go here */}
                         </div>
 
-                        <div className="px-8 pb-8">
-                            <div className="relative -mt-16 mb-6 flex justify-between items-end">
-                                <div className="w-32 h-32 rounded-full border-4 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-lg overflow-hidden">
+                        <div className="px-6 pb-6">
+                            <div className="relative -mt-10 mb-4 flex justify-between items-end">
+                                <div className="w-24 h-24 rounded-full border-4 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-lg overflow-hidden">
                                     {profile.photoUrl ? (
                                         <img src={profile.photoUrl} alt={profile.name} className="w-full h-full object-cover" />
                                     ) : (
-                                        <span className="text-5xl font-heading text-slate-300 dark:text-slate-600">
+                                        <span className="text-4xl font-heading text-slate-300 dark:text-slate-600">
                                             {profile.name.charAt(0)}
                                         </span>
                                     )}
                                 </div>
                                 <div className="flex gap-2">
-                                    <button className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-brand-500 transition-colors">
-                                        <Github className="w-5 h-5" />
+                                    <button className="p-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-brand-500 transition-colors">
+                                        <Github className="w-4 h-4" />
                                     </button>
-                                    <button className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-brand-500 transition-colors">
-                                        <Linkedin className="w-5 h-5" />
+                                    <button className="p-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-brand-500 transition-colors">
+                                        <Linkedin className="w-4 h-4" />
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="mb-6">
-                                <h2 className="text-3xl font-extrabold font-heading text-slate-900 dark:text-white mb-2">{profile.name}</h2>
-                                <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-slate-600 dark:text-slate-400">
-                                    <span className="flex items-center gap-1.5"><Briefcase className="w-4 h-4 text-brand-500" /> {profile.domain}</span>
-                                    <span className="flex items-center gap-1.5"><GraduationCap className="w-4 h-4 text-purple-500" /> {profile.college}</span>
+                            <div className="mb-4">
+                                <h2 className="text-2xl font-extrabold font-heading text-slate-900 dark:text-white mb-1.5">{profile.name}</h2>
+                                <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-600 dark:text-slate-400">
+                                    <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5 text-brand-500" /> {profile.domain}</span>
+                                    <span className="flex items-center gap-1"><GraduationCap className="w-3.5 h-3.5 text-purple-500" /> {profile.college}</span>
                                 </div>
                             </div>
 
-                            <div className="space-y-6">
+                            <div className="space-y-4">
                                 <div>
-                                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 border-b border-slate-200 dark:border-slate-800 pb-2">About</h3>
-                                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2 border-b border-slate-200 dark:border-slate-800 pb-1.5">About</h3>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                                         Passionate {profile.domain.toLowerCase()} student with a strong track record of delivering quality work.
                                         I am looking for challenging live projects to further hone my skills and contribute to real-world products.
                                     </p>
                                 </div>
 
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-3 border-b border-slate-200 dark:border-slate-800 pb-2">Live Project Experience</h3>
-                                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80 mb-4">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="font-bold text-slate-900 dark:text-white">Total Completed</span>
-                                        <span className="bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 px-3 py-1 rounded-full text-sm font-bold">
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2 border-b border-slate-200 dark:border-slate-800 pb-1.5">Live Project Experience</h3>
+                                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800/80 mb-3">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="font-bold text-sm text-slate-900 dark:text-white">Total Completed</span>
+                                        <span className="bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 px-2 py-0.5 rounded-full text-xs font-bold">
                                             {profile.completedProjects} Projects
                                         </span>
                                     </div>
@@ -125,14 +135,14 @@ const StudentProfileModal = ({ isOpen, onClose, profile, hasActiveProjects, onPo
 
                                 {/* Detailed Past Projects */}
                                 {profile.pastProjects && profile.pastProjects.length > 0 && (
-                                    <div className="space-y-3">
+                                    <div className="space-y-2">
                                         {profile.pastProjects.map((project, idx) => (
-                                            <div key={idx} className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-lg shadow-sm">
+                                            <div key={idx} className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-lg shadow-sm">
                                                 <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1">{project.title}</h4>
-                                                <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2 text-xs text-slate-500 dark:text-slate-400">
-                                                    <span className="flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5" /> {project.company}</span>
-                                                    <span className="flex items-center gap-1.5"><GraduationCap className="w-3.5 h-3.5" /> {project.domain}</span>
-                                                    <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {project.duration}</span>
+                                                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                                    <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" /> {project.company}</span>
+                                                    <span className="flex items-center gap-1"><GraduationCap className="w-3 h-3" /> {project.domain}</span>
+                                                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {project.duration}</span>
                                                 </div>
                                             </div>
                                         ))}
@@ -140,13 +150,13 @@ const StudentProfileModal = ({ isOpen, onClose, profile, hasActiveProjects, onPo
                                 )}
                             </div>
 
-                            <div className="pt-4 space-y-4">
+                            <div className="pt-4 mt-2 space-y-3">
                                 {!isMessaging ? (
                                     <button
                                         onClick={() => setIsMessaging(!isMessaging)}
-                                        className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl hover:-translate-y-0.5 transition-transform shadow-lg shadow-slate-900/20 dark:shadow-white/10 flex items-center justify-center gap-2"
+                                        className="w-full py-3 text-sm bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl hover:-translate-y-0.5 transition-transform shadow-lg shadow-slate-900/20 dark:shadow-white/10 flex items-center justify-center gap-2"
                                     >
-                                        <Mail className="w-5 h-5" /> Message Candidate
+                                        <Mail className="w-4 h-4" /> Message Candidate
                                     </button>
                                 ) : (
                                     <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -172,17 +182,34 @@ const StudentProfileModal = ({ isOpen, onClose, profile, hasActiveProjects, onPo
                                                         </p>
                                                     </div>
                                                 )}
+
+                                                <div className="mb-3">
+                                                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                                        Select Project Context <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <select
+                                                        value={selectedProjectId}
+                                                        onChange={(e) => setSelectedProjectId(e.target.value)}
+                                                        className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none"
+                                                    >
+                                                        <option value="" disabled>-- Choose an active project --</option>
+                                                        {activeProjects.map(p => (
+                                                            <option key={p.id} value={p.id}>{p.role} ({p.domain})</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
                                                 <textarea
                                                     value={messageText}
                                                     onChange={handleMessageChange}
                                                     placeholder="Hi, we'd love to discuss a potential project opportunity with you..."
-                                                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none resize-none h-28 mb-3 input-interactive"
+                                                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none resize-none h-20 mb-2 input-interactive"
                                                     autoFocus
                                                 ></textarea>
                                                 <div className="flex justify-end">
                                                     <button
                                                         onClick={handleSendMessage}
-                                                        disabled={!messageText.trim() || !!error}
+                                                        disabled={!messageText.trim() || !!error || !selectedProjectId}
                                                         className="px-4 py-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 text-white font-medium rounded-lg text-sm transition-colors flex items-center gap-2"
                                                     >
                                                         <Send className="w-4 h-4" /> Send

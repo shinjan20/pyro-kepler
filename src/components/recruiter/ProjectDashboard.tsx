@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { X, Briefcase, MapPin, Clock, Users, FileText, Download, GraduationCap, User, XCircle, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Briefcase, MapPin, Clock, Users, FileText, Download, GraduationCap } from 'lucide-react';
 import type { StudentProfile } from './StudentProfileCard';
 import ApplicantReviewView from './ApplicantReviewView';
+import WorkingCandidateView from './WorkingCandidateView';
 
 interface ProjectDashboardProps {
     isOpen: boolean;
@@ -12,12 +13,27 @@ interface ProjectDashboardProps {
     onDeclineCandidate?: (projectId: string, candidateId: string) => void;
     onMessageWorkingCandidate?: (projectId: string, candidateId: string) => void;
     onSendLetter?: (projectId: string, candidateId: string, type: 'joining' | 'completion', content: string) => void;
+    onCompleteProject?: (projectId: string, candidateId: string) => void;
+    onRevertCandidate?: (projectId: string, candidateId: string) => void;
+    initialTab?: 'details' | 'applicants' | 'archived' | 'working';
 }
 
-const ProjectDashboard = ({ isOpen, onClose, project, onArchive, onAcceptCandidate, onDeclineCandidate, onMessageWorkingCandidate, onSendLetter }: ProjectDashboardProps) => {
-    const [activeTab, setActiveTab] = useState<'details' | 'applicants' | 'archived' | 'working'>('details');
+const ProjectDashboard = ({ isOpen, onClose, project, onArchive, onAcceptCandidate, onDeclineCandidate, onMessageWorkingCandidate, onSendLetter, onCompleteProject, onRevertCandidate, initialTab = 'details' }: ProjectDashboardProps) => {
+    const [activeTab, setActiveTab] = useState<'details' | 'applicants' | 'archived' | 'working'>(initialTab);
     const [isConfirmingArchive, setIsConfirmingArchive] = useState(false);
     const [reviewingCandidate, setReviewingCandidate] = useState<StudentProfile | null>(null);
+    const [reviewingWorkingCandidate, setReviewingWorkingCandidate] = useState<StudentProfile | null>(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            setActiveTab(initialTab);
+        }
+    }, [isOpen, initialTab]);
+
+    const resetViews = () => {
+        setReviewingCandidate(null);
+        setReviewingWorkingCandidate(null);
+    };
 
     if (!isOpen || !project) return null;
 
@@ -65,6 +81,11 @@ const ProjectDashboard = ({ isOpen, onClose, project, onArchive, onAcceptCandida
                                 {candidate.applicationStatus === 'accepted' && (
                                     <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold px-2 py-1 rounded-md text-[10px] uppercase tracking-wider">
                                         Accepted
+                                    </span>
+                                )}
+                                {candidate.applicationStatus === 'rejected' && (
+                                    <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-bold px-2 py-1 rounded-md text-[10px] uppercase tracking-wider">
+                                        Rejected
                                     </span>
                                 )}
                             </div>
@@ -236,6 +257,11 @@ const ProjectDashboard = ({ isOpen, onClose, project, onArchive, onAcceptCandida
                                     if (onDeclineCandidate) onDeclineCandidate(project.id, id);
                                     setReviewingCandidate(null);
                                 }}
+                                isArchived={activeTab === 'archived'}
+                                onRevert={(id) => {
+                                    if (onRevertCandidate) onRevertCandidate(project.id, id);
+                                    setReviewingCandidate(null);
+                                }}
                             />
                         </div>
                     ) : reviewingWorkingCandidate ? (
@@ -255,6 +281,9 @@ const ProjectDashboard = ({ isOpen, onClose, project, onArchive, onAcceptCandida
                                 onSendLetter={(id, type, content) => {
                                     if (onSendLetter) onSendLetter(project.id, id, type, content);
                                 }}
+                                onCompleteProject={(id) => {
+                                    if (onCompleteProject) onCompleteProject(project.id, id);
+                                }}
                             />
                         </div>
                     ) : (
@@ -262,24 +291,24 @@ const ProjectDashboard = ({ isOpen, onClose, project, onArchive, onAcceptCandida
                             {activeTab === 'details' && (
                                 <div className="space-y-8">
                                     {/* Key Info Grid */}
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <div className="bg-white dark:bg-slate-800/80 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm">
-                                            <div className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5"><MapPin className="w-4 h-4" /> Domain</div>
-                                            <div className="font-bold text-slate-900 dark:text-white">{project.domain}</div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        <div className="bg-white dark:bg-slate-800/80 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-sm">
+                                            <div className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Domain</div>
+                                            <div className="font-bold text-sm text-slate-900 dark:text-white truncate" title={project.domain}>{project.domain}</div>
                                         </div>
-                                        <div className="bg-white dark:bg-slate-800/80 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm">
-                                            <div className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5"><Clock className="w-4 h-4" /> Duration</div>
-                                            <div className="font-bold text-slate-900 dark:text-white">{project.tenure} Months</div>
+                                        <div className="bg-white dark:bg-slate-800/80 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-sm">
+                                            <div className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Duration</div>
+                                            <div className="font-bold text-sm text-slate-900 dark:text-white truncate">{project.tenure} Months</div>
                                         </div>
-                                        <div className="bg-white dark:bg-slate-800/80 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm">
-                                            <div className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">Stipend</div>
-                                            <div className="font-bold text-slate-900 dark:text-white">
+                                        <div className="bg-white dark:bg-slate-800/80 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-sm">
+                                            <div className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1.5">Stipend</div>
+                                            <div className="font-bold text-sm text-slate-900 dark:text-white truncate">
                                                 {project.remuneration === '0' || project.remuneration === 0 ? 'Unpaid' : `₹${project.remuneration}`}
                                             </div>
                                         </div>
-                                        <div className="bg-white dark:bg-slate-800/80 p-5 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm">
-                                            <div className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5"><Users className="w-4 h-4" /> Openings</div>
-                                            <div className="font-bold text-brand-600 dark:text-brand-400">{project.positions || 1}</div>
+                                        <div className="bg-white dark:bg-slate-800/80 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-sm">
+                                            <div className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Openings</div>
+                                            <div className="font-bold text-sm text-brand-600 dark:text-brand-400 truncate">{project.positions || 1}</div>
                                         </div>
                                     </div>
 

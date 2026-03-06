@@ -132,20 +132,20 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                 )}
 
                 {isSuccess ? (
-                    <div className="p-12 text-center">
-                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/20 mb-6">
-                            <CheckCircle2 className="w-10 h-10 text-green-600 dark:text-green-500" />
+                    <div className="p-8 text-center">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/20 mb-4">
+                            <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-500" />
                         </div>
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
                             {editingProject ? 'Project Updated Successfully!' : 'Project Posted Successfully!'}
                         </h3>
-                        <p className="text-slate-600 dark:text-slate-400">
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
                             {editingProject ? 'The changes to your project are now live.' : 'Your live project is now active and visible to students.'}
                         </p>
                     </div>
                 ) : (
-                    <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6 relative z-10">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <form onSubmit={handleSubmit} className="p-5 md:p-6 space-y-4 relative z-10">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
                                     Role Title <span className="text-brand-500">*</span>
@@ -157,7 +157,7 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                                     value={formData.role}
                                     onChange={handleChange}
                                     placeholder="e.g. Frontend Developer Intern"
-                                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all input-interactive"
+                                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all input-interactive"
                                 />
                             </div>
                             <div>
@@ -169,7 +169,7 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                                     required
                                     value={formData.domain}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all input-interactive appearance-none"
+                                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all input-interactive appearance-none"
                                 >
                                     <option value="" disabled>Select Domain</option>
                                     {DOMAINS.map((domain) => (
@@ -192,7 +192,7 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                                     value={formData.customDomain}
                                     onChange={handleChange}
                                     placeholder="e.g. Artificial Intelligence"
-                                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all input-interactive"
+                                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all input-interactive"
                                 />
                             </div>
                         )}
@@ -208,7 +208,7 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                                 value={formData.objective}
                                 onChange={handleChange}
                                 placeholder="What is the main goal of this project?"
-                                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all input-interactive"
+                                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all input-interactive"
                             />
                         </div>
 
@@ -219,15 +219,15 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                             <textarea
                                 name="expectations"
                                 required
-                                rows={3}
+                                rows={2}
                                 value={formData.expectations}
                                 onChange={handleChange}
                                 placeholder="Describe the skills required and what the candidate will be doing..."
-                                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all resize-none input-interactive"
+                                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all resize-none input-interactive"
                             ></textarea>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
                                     Positions to Fill <span className="text-brand-500">*</span>
@@ -239,7 +239,7 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                                     required
                                     value={formData.positions}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all input-interactive"
+                                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all input-interactive"
                                 />
                             </div>
                             <div>
@@ -254,7 +254,7 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                                     value={formData.tenure}
                                     onChange={handleChange}
                                     placeholder="e.g. 3"
-                                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all input-interactive"
+                                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all input-interactive"
                                 />
                             </div>
                             <div>
@@ -269,7 +269,7 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                                     value={formData.remuneration}
                                     onChange={handleChange}
                                     placeholder="e.g. 20000 or 0 for Unpaid"
-                                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all input-interactive"
+                                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700/60 rounded-xl bg-white/50 dark:bg-[#0f172a]/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-[#030712] transition-all input-interactive"
                                 />
                             </div>
                         </div>
@@ -280,24 +280,24 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                             </label>
 
                             {formData.attachmentName ? (
-                                <div className="mt-1 flex items-center justify-between px-6 py-4 border border-brand-200 dark:border-brand-900/40 bg-brand-50 dark:bg-brand-900/10 rounded-xl">
+                                <div className="mt-1 flex items-center justify-between px-4 py-3 border border-brand-200 dark:border-brand-900/40 bg-brand-50 dark:bg-brand-900/10 rounded-xl">
                                     <div className="flex items-center gap-3">
-                                        <FileText className="w-8 h-8 text-brand-500" />
+                                        <FileText className="w-6 h-6 text-brand-500" />
                                         <div>
-                                            <p className="font-medium text-slate-900 dark:text-white text-sm">{formData.attachmentName}</p>
-                                            <p className="text-xs text-slate-500">Document attached</p>
+                                            <p className="font-medium text-slate-900 dark:text-white text-xs">{formData.attachmentName}</p>
+                                            <p className="text-[10px] text-slate-500">Document attached</p>
                                         </div>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => setFormData(prev => ({ ...prev, attachmentName: '' }))}
-                                        className="text-slate-400 hover:text-red-500 p-2"
+                                        className="text-slate-400 hover:text-red-500 p-1"
                                     >
-                                        <X className="w-5 h-5" />
+                                        <X className="w-4 h-4" />
                                     </button>
                                 </div>
                             ) : (
-                                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 dark:border-slate-700 border-dashed rounded-xl hover:border-brand-500 dark:hover:border-brand-400 transition-colors bg-slate-50 dark:bg-slate-900/50 cursor-pointer relative">
+                                <div className="mt-1 flex justify-center px-4 pt-4 pb-4 border-2 border-slate-300 dark:border-slate-700 border-dashed rounded-xl hover:border-brand-500 dark:hover:border-brand-400 transition-colors bg-slate-50 dark:bg-slate-900/50 cursor-pointer relative">
                                     <input
                                         type="file"
                                         onChange={handleFileChange}
@@ -305,8 +305,8 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                                         accept=".pdf,.doc,.docx"
                                     />
                                     <div className="space-y-1 text-center pointer-events-none">
-                                        <FileText className="mx-auto h-12 w-12 text-slate-400" />
-                                        <div className="flex text-sm text-slate-600 dark:text-slate-400 justify-center">
+                                        <FileText className="mx-auto h-8 w-8 text-slate-400" />
+                                        <div className="flex text-xs text-slate-600 dark:text-slate-400 justify-center">
                                             <span className="font-medium text-brand-600 dark:text-brand-400">Upload a file</span>
                                             <p className="pl-1">or drag and drop</p>
                                         </div>
@@ -317,19 +317,19 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                         </div>
 
                         {/* Footer Actions */}
-                        <div className="pt-8 mt-4 flex justify-center items-center gap-6">
+                        <div className="pt-4 flex justify-center items-center gap-4">
                             <button
                                 type="button"
                                 onClick={onClose}
                                 disabled={isSubmitting}
-                                className="px-8 py-3.5 border border-slate-300 dark:border-slate-700/60 rounded-2xl text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-50 dark:hover:bg-[#0f172a]/50 transition-all disabled:opacity-50 btn-interactive"
+                                className="px-6 py-2.5 text-sm border border-slate-300 dark:border-slate-700/60 rounded-xl text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-50 dark:hover:bg-[#0f172a]/50 transition-all disabled:opacity-50 btn-interactive"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="px-8 py-3.5 border border-transparent rounded-2xl shadow-lg shadow-brand-500/20 font-bold text-white bg-brand-600 hover:bg-brand-500 transition-all hover:-translate-y-0.5 disabled:opacity-70 disabled:hover:translate-y-0 btn-interactive"
+                                className="px-6 py-2.5 text-sm border border-transparent rounded-xl shadow-lg shadow-brand-500/20 font-bold text-white bg-brand-600 hover:bg-brand-500 transition-all hover:-translate-y-0.5 disabled:opacity-70 disabled:hover:translate-y-0 btn-interactive"
                             >
                                 {isSubmitting ? 'Processing...' : (editingProject ? 'Save Changes' : 'Post Project')}
                             </button>

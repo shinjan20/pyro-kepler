@@ -1,5 +1,5 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { Briefcase, Menu, X, LogOut, User as UserIcon, Settings as SettingsIcon } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Briefcase, Menu, X, LogOut, User as UserIcon, Settings as SettingsIcon, MoreHorizontal, Check, XCircle, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -7,8 +7,21 @@ const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
-    const { userRole, userName, isAuthenticated, logout } = useAuth();
+    const [showStatusMenu, setShowStatusMenu] = useState(false);
+    const { userRole, userName, userPhoto, isAuthenticated, logout } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Status State
+    const [interviewStatus, setInterviewStatus] = useState<'ready' | 'open' | 'closed'>(() => {
+        return (localStorage.getItem('pyroInterviewStatus') as 'ready' | 'open' | 'closed') || 'ready';
+    });
+
+    useEffect(() => {
+        localStorage.setItem('pyroInterviewStatus', interviewStatus);
+    }, [interviewStatus]);
+
+    const isActive = (path: string) => location.pathname === path;
 
     const handleLogout = () => {
         logout();
@@ -25,44 +38,120 @@ const Navbar = () => {
     }, []);
 
     return (
-        <nav className={`fixed w-full max-w-7xl mx-auto left-0 right-0 top-4 z-50 transition-all duration-500 px-4 sm:px-6 lg:px-8 ${isScrolled ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
-            }`}>
-            <div className={`transition-all duration-500 rounded-2xl mx-auto ${isScrolled ? 'glass shadow-xl shadow-brand-500/5 border border-white/20 dark:border-slate-800/60' : 'bg-transparent border-transparent'}`}>
-                <div className="flex justify-between items-center h-16 md:h-20 px-4 md:px-8">
+        <nav className={`fixed w-full left-0 right-0 z-[100] transition-all duration-500 ${isScrolled ? 'top-6 px-4 md:px-8' : 'top-0 px-0'}`}>
+            <div className={`mx-auto transition-all duration-700 ${isScrolled ? 'max-w-5xl glass rounded-full shadow-2xl shadow-brand-500/10 border border-white/40 dark:border-slate-700/60 px-4 md:px-6' : 'max-w-7xl bg-transparent border-transparent px-4 sm:px-6 lg:px-8'}`}>
+                <div className={`flex justify-between items-center transition-all duration-500 ${isScrolled ? 'h-16' : 'h-24 md:h-28'}`}>
                     <Link
                         to={isAuthenticated ? (userRole === 'recruiter' ? '/dashboard/recruiter' : '/projects') : '/'}
                         className="flex-shrink-0 flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity"
                     >
-                        <div className="bg-gradient-to-r from-brand-500 to-purple-600 p-2 md:p-2.5 rounded-xl shadow-lg shadow-brand-500/20">
-                            <Briefcase className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                        <div className={`bg-gradient-to-r from-brand-500 to-purple-600 rounded-xl shadow-lg shadow-brand-500/20 flex items-center justify-center transition-all duration-500 ${isScrolled ? 'w-10 h-10' : 'w-12 h-12'}`}>
+                            <Briefcase className={`text-white transition-all duration-500 ${isScrolled ? 'w-5 h-5' : 'w-6 h-6'}`} />
                         </div>
-                        <span className="font-heading font-extrabold text-xl md:text-2xl tracking-tight text-slate-900 dark:text-white">
-                            ProjectHub
+                        <span className={`font-heading font-extrabold tracking-tight text-slate-900 dark:text-white transition-all duration-500 ${isScrolled ? 'text-xl' : 'text-2xl md:text-3xl'}`}>
+                            ProjectMatch
                         </span>
                     </Link>
 
                     <div className="hidden md:flex items-center space-x-8">
-                        {(!isAuthenticated || userRole === 'student') && (
-                            <Link to="/" className="text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 font-medium transition-colors">Home</Link>
+                        {!isAuthenticated && (
+                            <Link to="/" className={`${isActive('/') ? 'text-brand-600 dark:text-brand-400 font-bold' : 'text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 font-medium'} transition-colors`}>Home</Link>
                         )}
-                        {(!isAuthenticated || userRole === 'student') && (
-                            <Link to="/projects" className="text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 font-medium transition-colors">Find WFH Projects</Link>
-                        )}
-                        {userRole === 'recruiter' && (
-                            <Link to="/dashboard/recruiter" className="text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 font-medium transition-colors">Dashboard</Link>
+                        {!isAuthenticated && (
+                            <Link to="/projects" className={`${isActive('/projects') ? 'text-brand-600 dark:text-brand-400 font-bold' : 'text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 font-medium'} transition-colors`}>Find WFH Projects</Link>
                         )}
                         {!isAuthenticated && (
                             <a href="#how-it-works" className="text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 font-medium transition-colors">How it Works</a>
                         )}
+                        {isAuthenticated && userRole === 'student' && (
+                            <>
+                                <Link to="/dashboard/student" className={`${isActive('/dashboard/student') ? 'text-brand-600 dark:text-brand-400 font-bold' : 'text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 font-medium'} transition-colors`}>Dashboard</Link>
+                                <Link to="/projects" className={`${isActive('/projects') ? 'text-brand-600 dark:text-brand-400 font-bold' : 'text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 font-medium'} transition-colors`}>Find Projects</Link>
+                            </>
+                        )}
                         <div className="flex items-center gap-4">
+                            {isAuthenticated && userRole === 'student' && (
+                                <div className="relative">
+                                    <button
+                                        onClick={() => {
+                                            setShowStatusMenu(!showStatusMenu);
+                                            setShowProfileMenu(false);
+                                        }}
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 hover:border-brand-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                    >
+                                        <div className={`p-1 rounded-full ${interviewStatus === 'ready' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                                            interviewStatus === 'open' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
+                                                'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                                            }`}>
+                                            {interviewStatus === 'ready' ? <MoreHorizontal className="w-4 h-4" /> :
+                                                interviewStatus === 'open' ? <Check className="w-4 h-4" /> :
+                                                    <XCircle className="w-4 h-4" />}
+                                        </div>
+                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                            {interviewStatus === 'ready' ? 'Ready for projects' :
+                                                interviewStatus === 'open' ? 'Open to projects' : 'Closed to projects'}
+                                        </span>
+                                    </button>
+
+                                    {showStatusMenu && (
+                                        <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-2 z-50 animate-in fade-in slide-in-from-top-2">
+                                            <button
+                                                onClick={() => { setInterviewStatus('ready'); setShowStatusMenu(false); }}
+                                                className={`w-full text-left flex gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${interviewStatus === 'ready' ? 'bg-slate-50 dark:bg-slate-800' : ''}`}
+                                            >
+                                                <div className="p-1.5 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 shrink-0 h-fit">
+                                                    <MoreHorizontal className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-900 dark:text-white text-sm mb-1">Ready for projects</p>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">You're actively looking for new live projects to build. Your profile will be visible to recruiters.</p>
+                                                </div>
+                                            </button>
+
+                                            <button
+                                                onClick={() => { setInterviewStatus('open'); setShowStatusMenu(false); }}
+                                                className={`w-full text-left flex gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${interviewStatus === 'open' ? 'bg-slate-50 dark:bg-slate-800' : ''}`}
+                                            >
+                                                <div className="p-1.5 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 shrink-0 h-fit">
+                                                    <Check className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-900 dark:text-white text-sm mb-1">Open to projects</p>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">You're not actively looking but open to hear about exciting new projects.</p>
+                                                </div>
+                                            </button>
+
+                                            <button
+                                                onClick={() => { setInterviewStatus('closed'); setShowStatusMenu(false); }}
+                                                className={`w-full text-left flex gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${interviewStatus === 'closed' ? 'bg-slate-50 dark:bg-slate-800' : ''}`}
+                                            >
+                                                <div className="p-1.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 shrink-0 h-fit">
+                                                    <XCircle className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-900 dark:text-white text-sm mb-1">Closed to projects</p>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">You're not looking and don't want to hear about new projects. Your profile is hidden.</p>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             {isAuthenticated ? (
                                 <div className="relative">
                                     <button
-                                        onClick={() => setShowProfileMenu(!showProfileMenu)}
+                                        onClick={() => {
+                                            setShowProfileMenu(!showProfileMenu);
+                                            setShowStatusMenu(false);
+                                        }}
                                         className="flex items-center gap-2 text-slate-600 dark:text-slate-300 font-medium hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
                                     >
-                                        <div className="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400">
-                                            <UserIcon className="w-4 h-4" />
+                                        <div className="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400 overflow-hidden border border-brand-200 dark:border-brand-800">
+                                            {userPhoto ? (
+                                                <img src={userPhoto} alt={userName} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <UserIcon className="w-4 h-4" />
+                                            )}
                                         </div>
                                         <span className="max-w-[120px] truncate">{userName}</span>
                                     </button>
@@ -81,6 +170,15 @@ const Navbar = () => {
                                                 >
                                                     <SettingsIcon className="w-4 h-4" /> Account Settings
                                                 </Link>
+                                                {userRole === 'student' && (
+                                                    <Link
+                                                        to="/completed-projects"
+                                                        onClick={() => setShowProfileMenu(false)}
+                                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors text-left font-medium"
+                                                    >
+                                                        <CheckCircle2 className="w-4 h-4" /> Completed Projects
+                                                    </Link>
+                                                )}
                                                 <div className="w-full h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
                                                 <button
                                                     onClick={handleLogout}
@@ -112,31 +210,74 @@ const Navbar = () => {
             {isOpen && (
                 <div className="md:hidden glass mt-2 rounded-2xl border border-white/20 dark:border-slate-800/60 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="px-2 pt-2 pb-6 space-y-1 sm:px-3">
-                        {(!isAuthenticated || userRole === 'student') && (
-                            <Link to="/" onClick={() => setIsOpen(false)} className="block px-3 py-3 rounded-lg text-base font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Home</Link>
+                        {!isAuthenticated && (
+                            <Link to="/" onClick={() => setIsOpen(false)} className={`block px-3 py-3 rounded-lg text-base ${isActive('/') ? 'font-bold text-brand-600 bg-slate-50 dark:bg-slate-800/50' : 'font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Home</Link>
                         )}
-                        {(!isAuthenticated || userRole === 'student') && (
-                            <Link to="/projects" onClick={() => setIsOpen(false)} className="block px-3 py-3 rounded-lg text-base font-medium text-brand-600 dark:text-brand-400 hover:bg-slate-100 dark:hover:bg-slate-800">Find Projects</Link>
-                        )}
-                        {userRole === 'recruiter' && (
-                            <Link to="/dashboard/recruiter" onClick={() => setIsOpen(false)} className="block px-3 py-3 rounded-lg text-base font-medium text-brand-600 dark:text-brand-400 hover:bg-slate-100 dark:hover:bg-slate-800">Dashboard</Link>
+                        {!isAuthenticated && (
+                            <Link to="/projects" onClick={() => setIsOpen(false)} className={`block px-3 py-3 rounded-lg text-base ${isActive('/projects') ? 'font-bold text-brand-600 bg-slate-50 dark:bg-slate-800/50' : 'font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Find Projects</Link>
                         )}
                         {!isAuthenticated && (
                             <a href="#how-it-works" onClick={() => setIsOpen(false)} className="block px-3 py-3 rounded-lg text-base font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">How it Works</a>
+                        )}
+                        {isAuthenticated && userRole === 'student' && (
+                            <>
+                                <Link to="/dashboard/student" onClick={() => setIsOpen(false)} className={`block px-3 py-3 rounded-lg text-base ${isActive('/dashboard/student') ? 'font-bold text-brand-600 bg-slate-50 dark:bg-slate-800/50' : 'font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Dashboard</Link>
+                                <Link to="/projects" onClick={() => setIsOpen(false)} className={`block px-3 py-3 rounded-lg text-base ${isActive('/projects') ? 'font-bold text-brand-600 bg-slate-50 dark:bg-slate-800/50' : 'font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Find Projects</Link>
+                            </>
                         )}
 
                         <div className="pt-4 flex flex-col gap-3 px-3">
                             {isAuthenticated ? (
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                                        <div className="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400 shrink-0">
-                                            <UserIcon className="w-5 h-5" />
+                                        <div className="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400 shrink-0 overflow-hidden border border-brand-200 dark:border-brand-800">
+                                            {userPhoto ? (
+                                                <img src={userPhoto} alt={userName} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <UserIcon className="w-5 h-5" />
+                                            )}
                                         </div>
                                         <div className="min-w-0">
                                             <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{userName}</p>
                                             <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{userRole}</p>
                                         </div>
                                     </div>
+
+                                    {userRole === 'student' && (
+                                        <div className="px-1 py-2 mt-2 space-y-2 border-t border-slate-200 dark:border-slate-800">
+                                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-2 mb-2">Interview Status</p>
+
+                                            <button
+                                                onClick={() => { setInterviewStatus('ready'); setIsOpen(false); }}
+                                                className={`w-full text-left flex items-center gap-3 p-2 rounded-xl transition-colors ${interviewStatus === 'ready' ? 'bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'}`}
+                                            >
+                                                <div className="p-1.5 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                                    <MoreHorizontal className="w-4 h-4" />
+                                                </div>
+                                                <span className="font-medium text-slate-900 dark:text-white text-sm">Ready to interview</span>
+                                            </button>
+
+                                            <button
+                                                onClick={() => { setInterviewStatus('open'); setIsOpen(false); }}
+                                                className={`w-full text-left flex items-center gap-3 p-2 rounded-xl transition-colors ${interviewStatus === 'open' ? 'bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'}`}
+                                            >
+                                                <div className="p-1.5 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                                                    <Check className="w-4 h-4" />
+                                                </div>
+                                                <span className="font-medium text-slate-900 dark:text-white text-sm">Open to offers</span>
+                                            </button>
+
+                                            <button
+                                                onClick={() => { setInterviewStatus('closed'); setIsOpen(false); }}
+                                                className={`w-full text-left flex items-center gap-3 p-2 rounded-xl transition-colors ${interviewStatus === 'closed' ? 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'}`}
+                                            >
+                                                <div className="p-1.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                                                    <XCircle className="w-4 h-4" />
+                                                </div>
+                                                <span className="font-medium text-slate-900 dark:text-white text-sm">Closed to offers</span>
+                                            </button>
+                                        </div>
+                                    )}
 
                                     <Link
                                         to="/settings"
@@ -145,6 +286,16 @@ const Navbar = () => {
                                     >
                                         <SettingsIcon className="w-5 h-5" /> Account Settings
                                     </Link>
+
+                                    {userRole === 'student' && (
+                                        <Link
+                                            to="/completed-projects"
+                                            onClick={() => setIsOpen(false)}
+                                            className="block w-full text-center py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex justify-center items-center gap-2"
+                                        >
+                                            <CheckCircle2 className="w-5 h-5" /> Completed Projects
+                                        </Link>
+                                    )}
 
                                     <button onClick={() => { handleLogout(); setIsOpen(false); }} className="block w-full text-center py-3 rounded-xl border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 font-medium hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors flex justify-center items-center gap-2">
                                         <LogOut className="w-5 h-5" /> Sign Out

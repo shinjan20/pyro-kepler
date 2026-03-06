@@ -1,7 +1,9 @@
+
 import { ArrowRight, Clock, Tag, Banknote, Calendar, Users, Home } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MOCK_PROJECTS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 const timeAgo = (dateInput?: string) => {
     if (!dateInput) return 'Recently';
@@ -35,9 +37,9 @@ const FeaturedProjects = () => {
     }).slice(0, 3);
 
     return (
-        <section className="py-20 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+        <section className="py-16 md:py-20 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-end mb-12">
+                <div className="flex flex-col md:flex-row justify-between md:items-end mb-10 md:mb-12 gap-6">
                     <div>
                         <h2 className="text-3xl md:text-4xl font-heading font-bold text-slate-900 dark:text-white mb-4">
                             Featured Live Projects
@@ -53,7 +55,7 @@ const FeaturedProjects = () => {
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {featuredList.map((project) => (
-                        <div key={project.id} className="glass-card p-6 flex flex-col group cursor-pointer">
+                        <div key={project.id} className="glass-card p-6 flex flex-col group cursor-pointer interactive-glow hover:border-brand-500/50 hover:shadow-[0_0_30px_rgba(99,102,241,0.15)]">
                             <div className="mb-4 flex items-start justify-between">
                                 <span className="inline-flex px-3 py-1 rounded-full bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 text-xs font-semibold tracking-wide uppercase">
                                     {project.category}
@@ -118,7 +120,10 @@ const FeaturedProjects = () => {
                                         </button>
                                     ) : (
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); alert('Application Submitted Successfully!'); }}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                toast.success('We fast-tracked your profile to the recruiter. Good luck!');
+                                            }}
                                             className="w-full text-center text-sm font-medium text-white bg-brand-600 hover:bg-brand-500 transition-colors flex items-center justify-center gap-2 py-3 rounded-xl shadow-md shadow-brand-500/20 active:scale-95"
                                         >
                                             Apply Now <ArrowRight className="w-4 h-4" />

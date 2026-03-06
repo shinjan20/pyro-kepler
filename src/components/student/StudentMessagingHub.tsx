@@ -1,0 +1,172 @@
+import { useState } from 'react';
+import { Send, Clock, MessageSquare, Briefcase } from 'lucide-react';
+
+interface StudentMessagingHubProps {
+    threads: any[];
+    setThreads: React.Dispatch<React.SetStateAction<any[]>>;
+}
+
+const StudentMessagingHub = ({ threads, setThreads }: StudentMessagingHubProps) => {
+    const [activeThreadId, setActiveThreadId] = useState<string | null>(threads[0]?.id || null);
+    const [newMessage, setNewMessage] = useState('');
+
+    const activeThread = threads.find(t => t.id === activeThreadId);
+
+    const handleSendMessage = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newMessage.trim() || !activeThreadId) return;
+
+        setThreads(prev => prev.map(thread => {
+            if (thread.id === activeThreadId) {
+                return {
+                    ...thread,
+                    messages: [
+                        ...thread.messages,
+                        {
+                            id: Date.now().toString(),
+                            senderId: 'student',
+                            text: newMessage,
+                            timestamp: new Date().toISOString()
+                        }
+                    ]
+                };
+            }
+            return thread;
+        }));
+        setNewMessage('');
+    };
+
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    if (threads.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-24 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900 shadow-sm mt-4">
+                <MessageSquare className="w-16 h-16 mb-4 text-slate-300 dark:text-slate-600" />
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No Messages Yet</h3>
+                <p>When a recruiter contacts you about an application, it will appear here.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex h-[calc(100vh-16rem)] min-h-[500px] border border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900 shadow-xl overflow-hidden mt-4">
+
+            {/* Left Pane: Thread List */}
+            <div className="w-full md:w-1/3 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <h2 className="font-bold font-heading text-lg text-slate-900 dark:text-white">Conversations</h2>
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                    {threads.map(thread => {
+                        const lastMessage = thread.messages[thread.messages.length - 1];
+                        const isActive = thread.id === activeThreadId;
+
+                        return (
+                            <button
+                                key={thread.id}
+                                onClick={() => setActiveThreadId(thread.id)}
+                                className={`w-full text-left p-4 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex gap-3 ${isActive ? 'bg-brand-50 dark:bg-brand-900/10 border-l-4 border-l-brand-500' : 'border-l-4 border-l-transparent'
+                                    }`}
+                            >
+                                <div className="relative shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-700 font-bold text-slate-600 dark:text-slate-300">
+                                    {thread.companyName?.charAt(0) || 'R'}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-start mb-0.5">
+                                        <h4 className="font-bold text-slate-900 dark:text-white truncate max-w-[140px]">{thread.companyName || 'Recruiter'}</h4>
+                                        <span className="text-[10px] text-slate-500 whitespace-nowrap pl-1 shrink-0">
+                                            {lastMessage ? formatDate(lastMessage.timestamp) : ''}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs font-semibold text-brand-600 dark:text-brand-400 mb-1 truncate">{thread.projectName || 'Project'}</p>
+                                    <p className={`text-sm truncate ${isActive ? 'text-slate-700 dark:text-slate-300 font-medium' : 'text-slate-500 dark:text-slate-400'}`}>
+                                        {lastMessage?.senderId === 'student' ? 'You: ' : ''}{lastMessage?.text || 'No messages yet'}
+                                    </p>
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Right Pane: Active Chat */}
+            {activeThread ? (
+                <div className="flex-1 flex flex-col hidden md:flex">
+                    {/* Chat Header */}
+                    <div className="p-4 md:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 shrink-0">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                                {activeThread.companyName?.charAt(0) || 'R'}
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{activeThread.companyName || 'Recruiter'}</h3>
+                                <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-0.5">
+                                    <Briefcase className="w-3.5 h-3.5" /> Project: <span className="font-medium text-slate-700 dark:text-slate-300">{activeThread.projectName || 'Active Application'}</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Messages Area */}
+                    <div className="flex-1 p-6 overflow-y-auto bg-slate-50/50 dark:bg-[#0a0f1d]/50 space-y-6">
+                        {activeThread.messages.map((msg: any) => {
+                            const isStudent = msg.senderId === 'student';
+                            return (
+                                <div key={msg.id} className={`flex flex-col ${isStudent ? 'items-end' : 'items-start'}`}>
+                                    <div className={`max-w-[75%] rounded-2xl p-4 shadow-sm ${isStudent
+                                        ? 'bg-brand-600 text-white rounded-tr-none'
+                                        : 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white rounded-tl-none outline outline-1 outline-slate-300 dark:outline-slate-600'
+                                        }`}>
+                                        <p className="text-[15px] leading-relaxed break-words">{msg.text}</p>
+                                    </div>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 flex items-center gap-1">
+                                        <Clock className="w-3 h-3" /> {formatDate(msg.timestamp)} • {isStudent ? 'You' : 'Recruiter'}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Input Area */}
+                    <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
+                        {activeThread.messages.some((msg: any) => msg.senderId === 'recruiter') ? (
+                            <form onSubmit={handleSendMessage} className="flex gap-3">
+                                <input
+                                    type="text"
+                                    value={newMessage}
+                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    placeholder="Type your reply..."
+                                    className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-900 dark:text-white transition-shadow"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={!newMessage.trim()}
+                                    className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 text-white p-3 rounded-xl transition-colors shadow-sm flex items-center justify-center"
+                                >
+                                    <Send className="w-5 h-5" />
+                                </button>
+                            </form>
+                        ) : (
+                            <div className="text-center py-4 px-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-slate-500 dark:text-slate-400 text-sm font-medium border border-slate-200 dark:border-slate-800">
+                                Waiting for the recruiter to send the first message before you can reply.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <div className="flex-1 flex items-center justify-center bg-slate-50/50 dark:bg-[#0a0f1d]/50 hidden md:flex">
+                    <div className="text-center text-slate-500">
+                        <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                        <p>Select a conversation to view messages</p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default StudentMessagingHub;

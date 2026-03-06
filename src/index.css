@@ -41,28 +41,51 @@
   h6 {
     font-family: var(--font-heading);
   }
+
+  button,
+  a,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"] {
+    cursor: pointer;
+  }
 }
 
 @layer utilities {
   .glass {
-    @apply bg-white/10 dark:bg-slate-900/40 backdrop-blur-2xl border border-white/20 dark:border-white/5 shadow-2xl;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    @apply bg-white/40 dark:bg-[#030712]/50 backdrop-blur-2xl shadow-2xl;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow:
+      0 8px 32px 0 rgba(31, 38, 135, 0.15),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.6);
   }
 
   @media (prefers-color-scheme: dark) {
     .glass {
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow:
+        0 8px 32px 0 rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
     }
   }
 
   .glass-card {
-    @apply bg-white dark:bg-[#0f172a]/60 backdrop-blur-lg rounded-2xl border border-slate-200 dark:border-slate-800/80 transition-all duration-500 relative overflow-hidden;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    @apply bg-white/70 dark:bg-[#0f172a]/70 backdrop-blur-xl rounded-2xl transition-all duration-500 relative overflow-hidden;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow:
+      0 4px 6px -1px rgba(31, 38, 135, 0.05),
+      0 10px 15px -3px rgba(31, 38, 135, 0.1),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
   }
 
   @media (prefers-color-scheme: dark) {
     .glass-card {
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.3),
+        0 10px 15px -3px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
     }
   }
 
@@ -162,11 +185,76 @@
 
 .bg-mesh {
   background-color: #030712;
-  background-image: radial-gradient(at 40% 20%, hsla(28, 100%, 74%, 0.15) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, hsla(189, 100%, 56%, 0.15) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, hsla(355, 100%, 93%, 0.1) 0px, transparent 50%),
-    radial-gradient(at 80% 50%, hsla(340, 100%, 76%, 0.15) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, hsla(22, 100%, 77%, 0.1) 0px, transparent 50%),
-    radial-gradient(at 80% 100%, hsla(242, 100%, 70%, 0.15) 0px, transparent 50%),
-    radial-gradient(at 0% 0%, hsla(343, 100%, 76%, 0.1) 0px, transparent 50%);
+  background-image:
+    radial-gradient(at 0% 0%, hsla(253, 100%, 65%, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(285, 100%, 64%, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, hsla(196, 100%, 53%, 0.15) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsla(253, 100%, 65%, 0.15) 0px, transparent 50%);
+  animation: bg-mesh-anim 15s ease infinite alternate;
+}
+
+@keyframes bg-mesh-anim {
+  0% {
+    background-image:
+      radial-gradient(at 0% 0%, hsla(253, 100%, 65%, 0.2) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(285, 100%, 64%, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(196, 100%, 53%, 0.15) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsla(253, 100%, 65%, 0.2) 0px, transparent 50%);
+  }
+
+  50% {
+    background-image:
+      radial-gradient(at 20% 20%, hsla(253, 100%, 65%, 0.15) 0px, transparent 50%),
+      radial-gradient(at 80% 20%, hsla(285, 100%, 64%, 0.2) 0px, transparent 50%),
+      radial-gradient(at 80% 80%, hsla(196, 100%, 53%, 0.2) 0px, transparent 50%),
+      radial-gradient(at 20% 80%, hsla(253, 100%, 65%, 0.15) 0px, transparent 50%);
+  }
+
+  100% {
+    background-image:
+      radial-gradient(at 0% 0%, hsla(253, 100%, 65%, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(285, 100%, 64%, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(196, 100%, 53%, 0.2) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsla(253, 100%, 65%, 0.2) 0px, transparent 50%);
+  }
+}
+
+/* Animated Border Utilities */
+.animated-border-badge {
+  position: relative;
+  background: transparent;
+  background-clip: padding-box;
+  border: solid 1px transparent;
+}
+
+.animated-border-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  margin: -1px;
+  /* same as border width */
+  border-radius: inherit;
+  /* same as border-radius */
+  background: conic-gradient(from var(--angle, 0deg), #4f46e5, #ec4899, #8b5cf6, #4f46e5);
+  animation: spin-angle 3s linear infinite;
+}
+
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes spin-angle {
+  from {
+    --angle: 0deg;
+  }
+
+  to {
+    --angle: 360deg;
+  }
 }

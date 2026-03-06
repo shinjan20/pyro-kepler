@@ -13,6 +13,20 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
     // Basic local state to handle message sending and status changes in memory
     const [activeThreadId, setActiveThreadId] = useState<string | null>(threads[0]?.id || null);
     const [newMessage, setNewMessage] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'selected' | 'rejected'>('all');
+    const [projectFilter, setProjectFilter] = useState<string>('all');
+
+    const filteredThreads = threads.filter(thread => {
+        const threadCandidate = MOCK_PROFILES.find(p => p.id === thread.candidateId);
+        if (!threadCandidate) return false;
+
+        const matchesSearch = threadCandidate.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || thread.status === statusFilter;
+        const matchesProject = projectFilter === 'all' || thread.projectId === projectFilter;
+
+        return matchesSearch && matchesStatus && matchesProject;
+    });
 
     const activeThread = threads.find(t => t.id === activeThreadId);
 
@@ -71,19 +85,42 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
 
             {/* Left Pane: Thread List */}
             <div className="w-full md:w-1/3 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+                <div className="p-4 border-b border-slate-200 dark:border-slate-800 space-y-3">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
                             type="text"
                             placeholder="Search candidates..."
-                            className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-shadow"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-shadow"
                         />
+                    </div>
+                    <div className="flex gap-2">
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value as any)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-brand-500/50 flex-1 min-w-0"
+                        >
+                            <option value="all">All Statuses</option>
+                            <option value="selected">Selected</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                        <select
+                            value={projectFilter}
+                            onChange={(e) => setProjectFilter(e.target.value)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-brand-500/50 flex-1 min-w-0"
+                        >
+                            <option value="all">All Projects</option>
+                            {projects.map(p => (
+                                <option key={p.id} value={p.id}>{p.role}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
-                    {threads.map(thread => {
+                    {filteredThreads.map(thread => {
                         const threadCandidate = MOCK_PROFILES.find(p => p.id === thread.candidateId);
                         const lastMessage = thread.messages[thread.messages.length - 1];
                         const isActive = thread.id === activeThreadId;
@@ -109,8 +146,16 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex justify-between items-start mb-0.5">
-                                        <h4 className="font-bold text-slate-900 dark:text-white truncate">{threadCandidate.name}</h4>
-                                        <span className="text-[10px] text-slate-500 whitespace-nowrap ml-2">
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="font-bold text-slate-900 dark:text-white truncate max-w-[120px]">{threadCandidate.name}</h4>
+                                            {thread.status === 'selected' && (
+                                                <span className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide shrink-0">Selected</span>
+                                            )}
+                                            {thread.status === 'rejected' && (
+                                                <span className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide shrink-0">Rejected</span>
+                                            )}
+                                        </div>
+                                        <span className="text-[10px] text-slate-500 whitespace-nowrap pl-1 shrink-0">
                                             {lastMessage ? formatDate(lastMessage.timestamp) : ''}
                                         </span>
                                     </div>
@@ -183,7 +228,7 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
 
                     {/* Messages Area */}
                     <div className="flex-1 p-6 overflow-y-auto bg-slate-50/50 dark:bg-[#0a0f1d]/50 space-y-6">
-                        {activeThread.messages.map((msg: any, idx: number) => {
+                        {activeThread.messages.map((msg: any) => {
                             const isRecruiter = msg.senderId === 'recruiter';
                             return (
                                 <div key={msg.id} className={`flex flex-col ${isRecruiter ? 'items-end' : 'items-start'}`}>

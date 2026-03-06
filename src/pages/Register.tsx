@@ -9,6 +9,8 @@ const Register = () => {
     const [companyWebsite, setCompanyWebsite] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [step, setStep] = useState(1);
+    const [otp, setOtp] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
@@ -16,22 +18,33 @@ const Register = () => {
     const { login } = useAuth();
 
     const isRecruiter = searchParams.get('type') === 'recruiter';
-    const returnTo = searchParams.get('returnTo');
 
     const handleEmailRegister = (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setIsLoading(true);
 
-        // Simulate API call
         setTimeout(() => {
-            if (!name || !email || !password || (isRecruiter && (!companyName || !companyWebsite))) {
-                setError('Please fill out all fields.');
+            if (!isRecruiter) {
+                if (!name || !email || !password) {
+                    setError('Please fill out all fields.');
+                    setIsLoading(false);
+                    return;
+                }
                 setIsLoading(false);
+                login('student');
+                // Force profile setup flow on new registration
+                navigate('/student-profile-setup');
                 return;
             }
 
-            if (isRecruiter) {
+            // Recruiter flow
+            if (step === 1) {
+                if (!name || !email || !companyName || !companyWebsite) {
+                    setError('Please fill out all fields.');
+                    setIsLoading(false);
+                    return;
+                }
                 const publicDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'aol.com', 'icloud.com'];
                 const domain = email.split('@')[1]?.toLowerCase();
                 if (!domain || publicDomains.includes(domain)) {
@@ -39,19 +52,28 @@ const Register = () => {
                     setIsLoading(false);
                     return;
                 }
+                setStep(2);
+                setIsLoading(false);
+            } else if (step === 2) {
+                if (!otp || otp.length < 6) {
+                    setError('Please enter a valid 6-digit OTP.');
+                    setIsLoading(false);
+                    return;
+                }
+                // Mock OTP verification success
+                setStep(3);
+                setIsLoading(false);
+            } else if (step === 3) {
+                if (!password || password.length < 8) {
+                    setError('Password must be at least 8 characters long.');
+                    setIsLoading(false);
+                    return;
+                }
+                setIsLoading(false);
+                login('recruiter', name);
+                navigate('/dashboard/recruiter', { state: { isNewRecruiter: true } });
             }
-
-            // Success simulation
-            setIsLoading(false);
-
-            if (isRecruiter) {
-                login('recruiter');
-                navigate('/dashboard/recruiter');
-            } else {
-                login('student');
-                navigate(returnTo || '/projects');
-            }
-        }, 1500);
+        }, 1000);
     };
 
     const handleGoogleRegister = () => {
@@ -60,7 +82,8 @@ const Register = () => {
         setTimeout(() => {
             setIsLoading(false);
             login('student');
-            navigate(returnTo || '/projects');
+            // Force profile setup flow on registration
+            navigate('/student-profile-setup');
         }, 1000);
     };
 
@@ -107,121 +130,152 @@ const Register = () => {
                     )}
 
                     <form className="space-y-5 relative z-10" onSubmit={handleEmailRegister}>
-                        <div>
-                            <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
-                                Full name
-                            </label>
-                            <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <User className="h-5 w-5 text-slate-500 group-focus-within:text-brand-400 transition-colors" />
-                                </div>
-                                <input
-                                    id="name"
-                                    name="name"
-                                    type="text"
-                                    autoComplete="name"
-                                    required
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-slate-950 transition-all input-interactive"
-                                    placeholder="John Doe"
-                                />
-                            </div>
-                        </div>
-
-                        {isRecruiter && (
+                        {(!isRecruiter || step === 1) && (
                             <>
                                 <div>
-                                    <label htmlFor="companyName" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
-                                        Company Name
+                                    <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
+                                        Full name
                                     </label>
                                     <div className="relative group">
                                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                            <Briefcase className="h-5 w-5 text-slate-500 group-focus-within:text-brand-400 transition-colors" />
+                                            <User className="h-5 w-5 text-slate-500 group-focus-within:text-brand-400 transition-colors" />
                                         </div>
                                         <input
-                                            id="companyName"
-                                            name="companyName"
+                                            id="name"
+                                            name="name"
                                             type="text"
-                                            required={isRecruiter}
-                                            value={companyName}
-                                            onChange={(e) => setCompanyName(e.target.value)}
+                                            autoComplete="name"
+                                            required
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
                                             className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-slate-950 transition-all input-interactive"
-                                            placeholder="Acme Corp"
+                                            placeholder="John Doe"
                                         />
                                     </div>
                                 </div>
+
+                                {isRecruiter && (
+                                    <>
+                                        <div>
+                                            <label htmlFor="companyName" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
+                                                Company Name
+                                            </label>
+                                            <div className="relative group">
+                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                    <Briefcase className="h-5 w-5 text-slate-500 group-focus-within:text-brand-400 transition-colors" />
+                                                </div>
+                                                <input
+                                                    id="companyName"
+                                                    name="companyName"
+                                                    type="text"
+                                                    required={isRecruiter}
+                                                    value={companyName}
+                                                    onChange={(e) => setCompanyName(e.target.value)}
+                                                    className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-slate-950 transition-all input-interactive"
+                                                    placeholder="Acme Corp"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label htmlFor="companyWebsite" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
+                                                Company Website
+                                            </label>
+                                            <div className="relative group">
+                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                    <Globe className="h-5 w-5 text-slate-500 group-focus-within:text-brand-400 transition-colors" />
+                                                </div>
+                                                <input
+                                                    id="companyWebsite"
+                                                    name="companyWebsite"
+                                                    type="url"
+                                                    required={isRecruiter}
+                                                    value={companyWebsite}
+                                                    onChange={(e) => setCompanyWebsite(e.target.value)}
+                                                    className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-slate-950 transition-all input-interactive"
+                                                    placeholder="https://acme.com"
+                                                />
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
                                 <div>
-                                    <label htmlFor="companyWebsite" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
-                                        Company Website
+                                    <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
+                                        Email address
                                     </label>
                                     <div className="relative group">
                                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                            <Globe className="h-5 w-5 text-slate-500 group-focus-within:text-brand-400 transition-colors" />
+                                            <Mail className="h-5 w-5 text-slate-500 group-focus-within:text-brand-400 transition-colors" />
                                         </div>
                                         <input
-                                            id="companyWebsite"
-                                            name="companyWebsite"
-                                            type="url"
-                                            required={isRecruiter}
-                                            value={companyWebsite}
-                                            onChange={(e) => setCompanyWebsite(e.target.value)}
+                                            id="email"
+                                            name="email"
+                                            type="email"
+                                            autoComplete="email"
+                                            required
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
                                             className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-slate-950 transition-all input-interactive"
-                                            placeholder="https://acme.com"
+                                            placeholder="you@example.com"
                                         />
                                     </div>
                                 </div>
                             </>
                         )}
 
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
-                                Email address
-                            </label>
-                            <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <Mail className="h-5 w-5 text-slate-500 group-focus-within:text-brand-400 transition-colors" />
+                        {isRecruiter && step === 2 && (
+                            <div>
+                                <label htmlFor="otp" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
+                                    One-Time Password (OTP)
+                                </label>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 ml-1">We've sent a 6-digit code to {email}</p>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-brand-400 transition-colors" />
+                                    </div>
+                                    <input
+                                        id="otp"
+                                        name="otp"
+                                        type="text"
+                                        maxLength={6}
+                                        required
+                                        value={otp}
+                                        onChange={(e) => setOtp(e.target.value)}
+                                        className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-slate-950 transition-all input-interactive tracking-[0.5em] font-mono text-center"
+                                        placeholder="000000"
+                                    />
                                 </div>
-                                <input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    autoComplete="email"
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-slate-950 transition-all input-interactive"
-                                    placeholder="you@example.com"
-                                />
                             </div>
-                        </div>
+                        )}
 
-                        <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
-                                Password
-                            </label>
-                            <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-brand-400 transition-colors" />
+                        {(!isRecruiter || step === 3) && (
+                            <div>
+                                <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
+                                    Password
+                                </label>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-brand-400 transition-colors" />
+                                    </div>
+                                    <input
+                                        id="password"
+                                        name="password"
+                                        type="password"
+                                        autoComplete="new-password"
+                                        required
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-slate-950 transition-all input-interactive"
+                                        placeholder="••••••••"
+                                    />
                                 </div>
-                                <input
-                                    id="password"
-                                    name="password"
-                                    type="password"
-                                    autoComplete="new-password"
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-slate-950 transition-all input-interactive"
-                                    placeholder="••••••••"
-                                />
+                                <p className="mt-2 text-xs text-slate-500 ml-1">
+                                    Must be at least 8 characters long
+                                </p>
                             </div>
-                            <p className="mt-2 text-xs text-slate-500 ml-1">
-                                Must be at least 8 characters long
-                            </p>
-                        </div>
+                        )}
 
-                        <div className="pt-2">
+                        <div className="pt-2 flex flex-col gap-3">
                             <button
                                 type="submit"
                                 disabled={isLoading}
@@ -236,11 +290,25 @@ const Register = () => {
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            Creating account...
+                                            Processing...
                                         </>
-                                    ) : 'Create account'}
+                                    ) : (
+                                        !isRecruiter ? 'Create account' :
+                                            step === 1 ? 'Continue to Email Verification' :
+                                                step === 2 ? 'Verify OTP' : 'Create account'
+                                    )}
                                 </span>
                             </button>
+                            {isRecruiter && step > 1 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setStep(step - 1)}
+                                    disabled={isLoading}
+                                    className="w-full flex justify-center py-3.5 px-4 rounded-2xl text-slate-600 dark:text-slate-400 font-bold text-base hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-70"
+                                >
+                                    Back
+                                </button>
+                            )}
                         </div>
                     </form>
 

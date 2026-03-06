@@ -2,7 +2,12 @@ import { useState } from 'react';
 import { Search, Filter, Clock, Tag, ArrowRight, Banknote, Calendar, Users, Home } from 'lucide-react';
 import { MOCK_PROJECTS, CATEGORIES } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import ProjectFiltersModal from '../components/student/ProjectFiltersModal';
+import ApplicationModal from '../components/student/ApplicationModal';
+import ProjectDetailsModal from '../components/student/ProjectDetailsModal';
+import AlertModal from '../components/AlertModal';
+import { useEffect } from 'react';
 
 const timeAgo = (dateInput?: string) => {
     if (!dateInput) return 'Recently';
@@ -29,8 +34,76 @@ const timeAgo = (dateInput?: string) => {
 const Projects = () => {
     const { isAuthenticated, userRole } = useAuth();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const initialBookmarkFilter = searchParams.get('bookmarks') === 'true';
+
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
+
+    // Advanced Filters State
+    const [isFiltersModalOpen, setIsFiltersModalOpen] = useState(false);
+    const [activeFilters, setActiveFilters] = useState({
+        duration: [] as string[],
+        stipend: '',
+        skills: [] as string[],
+        workType: [] as string[],
+        showBookmarkedOnly: initialBookmarkFilter
+    });
+
+    // Application Modal State
+    const [applyingProjectId, setApplyingProjectId] = useState<number | null>(null);
+    const [viewingProjectId, setViewingProjectId] = useState<number | null>(null);
+    const [alertConfig, setAlertConfig] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        type: 'success' | 'info' | 'error';
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info'
+    });
+
+    // Bookmarks State
+    const [bookmarkedProjectIds, setBookmarkedProjectIds] = useState<number[]>(() => {
+        const saved = localStorage.getItem('pyroBookmarks');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    // Applications State
+    const [appliedProjectIds, setAppliedProjectIds] = useState<number[]>(() => {
+        const savedApps = localStorage.getItem('pyroApplications');
+        if (savedApps) {
+            const parsedApps = JSON.parse(savedApps);
+            return parsedApps.map((app: any) => app.projectId);
+        }
+        return [];
+    });
+
+    const [interviewStatus] = useState<'ready' | 'open' | 'closed'>(() => {
+        return (localStorage.getItem('pyroInterviewStatus') as 'ready' | 'open' | 'closed') || 'ready';
+    });
+
+    useEffect(() => {
+        localStorage.setItem('pyroBookmarks', JSON.stringify(bookmarkedProjectIds));
+    }, [bookmarkedProjectIds]);
+
+    const toggleBookmark = (e: React.MouseEvent, id: number) => {
+        e.stopPropagation();
+        setBookmarkedProjectIds(prev =>
+            prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id]
+        );
+    };
+
+    // Watch for URL search parameter changes (bookmarks toggle)
+    useEffect(() => {
+        const isBookmarksFilter = searchParams.get('bookmarks') === 'true';
+        setActiveFilters(prev => ({
+            ...prev,
+            showBookmarkedOnly: isBookmarksFilter
+        }));
+    }, [searchParams]);
 
     const filteredProjects = MOCK_PROJECTS.filter(project => {
         // Auto-archive rule: if older than 2 months (approx 60 days) and 0 hired positions, do not show in live projects
@@ -39,11 +112,36 @@ const Projects = () => {
             return false;
         }
 
+        // Hide applied projects for students
+        if (userRole === 'student' && appliedProjectIds.includes(project.id)) {
+            return false;
+        }
+
         const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             project.company.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = selectedCategory === 'All' || project.category === selectedCategory;
 
-        return matchesSearch && matchesCategory;
+        // Apply advanced filters
+        let matchesAdvanced = true;
+        if (activeFilters.duration.length > 0) {
+            matchesAdvanced = matchesAdvanced && activeFilters.duration.includes(project.duration);
+        }
+        if (activeFilters.workType.length > 0) {
+            matchesAdvanced = matchesAdvanced && activeFilters.workType.includes(project.type);
+        }
+        if (activeFilters.skills.length > 0) {
+            // Check if project has all the selected skills
+            matchesAdvanced = matchesAdvanced && activeFilters.skills.every(skill => project.tags.includes(skill));
+        }
+        if (activeFilters.stipend !== '') {
+            matchesAdvanced = matchesAdvanced && Number(project.remuneration) >= Number(activeFilters.stipend);
+        }
+
+        if (activeFilters.showBookmarkedOnly) {
+            matchesAdvanced = matchesAdvanced && bookmarkedProjectIds.includes(project.id);
+        }
+
+        return matchesSearch && matchesCategory && matchesAdvanced;
     });
 
     return (
@@ -97,8 +195,14 @@ const Projects = () => {
                                     {category}
                                 </button>
                             ))}
-                            <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full text-sm font-medium hover:scale-105 transition-all shadow-xl shadow-slate-900/10 active:scale-95 ml-2">
+                            <button
+                                onClick={() => setIsFiltersModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full text-sm font-medium hover:scale-105 transition-all shadow-xl shadow-slate-900/10 active:scale-95 ml-2 relative"
+                            >
                                 <Filter className="w-4 h-4" /> Filters
+                                {(activeFilters.duration.length > 0 || activeFilters.stipend !== '' || activeFilters.skills.length > 0 || activeFilters.workType.length > 0 || activeFilters.showBookmarkedOnly) && (
+                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-brand-500 border-2 border-slate-900 dark:border-white rounded-full"></span>
+                                )}
                             </button>
                         </div>
                     </div>
@@ -112,7 +216,11 @@ const Projects = () => {
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
                         {filteredProjects.length > 0 ? (
                             filteredProjects.map((project) => (
-                                <div key={project.id} className="glass-card p-6 flex flex-col group/card cursor-pointer hover:border-brand-500/50">
+                                <div
+                                    key={project.id}
+                                    onClick={() => setViewingProjectId(project.id)}
+                                    className="glass-card p-6 flex flex-col group/card cursor-pointer hover:border-brand-500/50"
+                                >
                                     <div className="mb-5 flex items-start justify-between">
                                         <div className="relative">
                                             {/* Neon subtle backdrop for category */}
@@ -121,9 +229,18 @@ const Projects = () => {
                                                 {project.category}
                                             </span>
                                         </div>
-                                        <button className="text-slate-300 dark:text-slate-600 hover:text-brand-500 transition-colors bg-slate-50 dark:bg-slate-800/50 p-2 rounded-full backdrop-blur-sm border border-slate-100 dark:border-slate-800">
-                                            <BookmarkIcon className="w-4 h-4" />
-                                        </button>
+                                        {userRole !== 'recruiter' && (
+                                            <button
+                                                onClick={(e) => toggleBookmark(e, project.id)}
+                                                className={`p-2 rounded-full backdrop-blur-sm border transition-all duration-300 ${bookmarkedProjectIds.includes(project.id)
+                                                    ? 'bg-brand-500/20 border-brand-500/50 text-brand-500 dark:text-brand-400'
+                                                    : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 text-slate-300 dark:text-slate-600 hover:text-brand-500'
+                                                    }`}
+                                                aria-label={bookmarkedProjectIds.includes(project.id) ? "Remove bookmark" : "Add bookmark"}
+                                            >
+                                                <BookmarkIcon className="w-4 h-4" filled={bookmarkedProjectIds.includes(project.id)} />
+                                            </button>
+                                        )}
                                     </div>
 
                                     <h3 className="text-2xl font-bold font-heading text-slate-900 dark:text-white mb-3 group-hover/card:text-transparent group-hover/card:bg-clip-text group-hover/card:bg-gradient-to-r group-hover/card:from-brand-500 group-hover/card:to-purple-500 transition-all duration-300">
@@ -187,12 +304,20 @@ const Projects = () => {
                                                         onClick={(e) => { e.stopPropagation(); navigate('/login?returnTo=/projects'); }}
                                                         className="relative w-full bg-slate-900/90 dark:bg-white/90 text-white dark:text-slate-900 py-3 rounded-[11px] font-semibold hover:bg-slate-800 dark:hover:bg-white transition-colors flex items-center justify-center gap-2 z-10 opacity-70 group-hover/card:opacity-100 backdrop-blur-md"
                                                     >
-                                                        Check Details <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                                                        Login to Apply <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                                                     </button>
                                                 ) : (
                                                     <button
-                                                        onClick={(e) => { e.stopPropagation(); alert('Application Submitted Successfully!'); }}
-                                                        className="relative w-full bg-brand-600/90 text-white py-3 rounded-[11px] font-semibold hover:bg-brand-500 transition-colors flex items-center justify-center gap-2 z-10 opacity-70 group-hover/card:opacity-100 backdrop-blur-md"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setApplyingProjectId(project.id);
+                                                        }}
+                                                        disabled={interviewStatus === 'closed'}
+                                                        title={interviewStatus === 'closed' ? "Your profile is closed to projects." : ""}
+                                                        className={`relative w-full text-white py-3 rounded-[11px] font-semibold transition-colors flex items-center justify-center gap-2 z-10 backdrop-blur-md ${interviewStatus === 'closed'
+                                                            ? 'bg-brand-600/50 cursor-not-allowed opacity-50 grayscale blur-[1px]'
+                                                            : 'bg-brand-600/90 hover:bg-brand-500 opacity-70 group-hover/card:opacity-100'
+                                                            }`}
                                                     >
                                                         Apply Now <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                                                     </button>
@@ -221,14 +346,63 @@ const Projects = () => {
                     </div>
                 </div>
             </div>
+
+            <ProjectFiltersModal
+                isOpen={isFiltersModalOpen}
+                onClose={() => setIsFiltersModalOpen(false)}
+                filters={activeFilters}
+                onFiltersChange={setActiveFilters}
+            />
+
+            {viewingProjectId !== null && (
+                <ProjectDetailsModal
+                    isOpen={true}
+                    onClose={() => setViewingProjectId(null)}
+                    projectId={viewingProjectId}
+                    onApplyClicked={() => {
+                        setViewingProjectId(null);
+                        setApplyingProjectId(viewingProjectId);
+                    }}
+                />
+            )}
+
+            {applyingProjectId !== null && (
+                <ApplicationModal
+                    isOpen={true}
+                    onClose={() => setApplyingProjectId(null)}
+                    projectId={applyingProjectId}
+                    onSubmitSuccess={() => {
+                        const savedApps = localStorage.getItem('pyroApplications');
+                        if (savedApps) {
+                            const parsedApps = JSON.parse(savedApps);
+                            setAppliedProjectIds(parsedApps.map((app: any) => app.projectId));
+                        }
+                        setApplyingProjectId(null);
+                        setAlertConfig({
+                            isOpen: true,
+                            title: 'Application Sent!',
+                            message: 'Your profile and application details have been forwarded to the recruiter successfully.',
+                            type: 'success'
+                        });
+                    }}
+                />
+            )}
+
+            <AlertModal
+                isOpen={alertConfig.isOpen}
+                onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                type={alertConfig.type}
+            />
         </div>
     );
 };
 
 // Simple bookmark outline icon
-function BookmarkIcon(props: React.SVGProps<SVGSVGElement>) {
+function BookmarkIcon({ filled = false, ...props }: React.SVGProps<SVGSVGElement> & { filled?: boolean }) {
     return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
             <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
         </svg>
     );

@@ -7,9 +7,9 @@ const Hero = () => {
         <div className="relative min-h-[95vh] flex flex-col justify-center pt-20 pb-12 overflow-hidden bg-slate-50 dark:bg-[#030712] transition-colors duration-500">
             {/* Animated Mesh Background Splashes */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-brand-500/20 dark:bg-brand-500/10 blur-[120px] animate-blob mix-blend-multiply dark:mix-blend-screen"></div>
-                <div className="absolute top-[20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-purple-500/20 dark:bg-purple-500/10 blur-[120px] animate-blob animation-delay-2000 mix-blend-multiply dark:mix-blend-screen"></div>
-                <div className="absolute bottom-[-20%] left-[20%] w-[50%] h-[50%] rounded-full bg-blue-500/20 dark:bg-blue-500/10 blur-[120px] animate-blob animation-delay-4000 mix-blend-multiply dark:mix-blend-screen"></div>
+                <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-brand-500/30 dark:bg-brand-500/20 blur-[140px] animate-blob mix-blend-multiply dark:mix-blend-screen"></div>
+                <div className="absolute top-[15%] right-[-15%] w-[70%] h-[70%] rounded-full bg-pink-500/30 dark:bg-pink-500/20 blur-[140px] animate-blob animation-delay-2000 mix-blend-multiply dark:mix-blend-screen"></div>
+                <div className="absolute bottom-[-30%] left-[10%] w-[60%] h-[60%] rounded-full bg-purple-500/30 dark:bg-purple-500/20 blur-[140px] animate-blob animation-delay-4000 mix-blend-multiply dark:mix-blend-screen"></div>
                 {/* Noise texture overlay for texture */}
                 <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] mix-blend-overlay" style={{ backgroundImage: 'url("https://grainy-gradients.vercel.app/noise.svg")' }}></div>
             </div>
@@ -18,20 +18,19 @@ const Hero = () => {
                 <div className="text-center max-w-4xl mx-auto">
 
                     {/* Glowing Notification Pill */}
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-brand-500/30 dark:border-brand-400/20 text-brand-700 dark:text-brand-300 font-medium text-sm mb-8 shadow-[0_0_20px_rgba(99,102,241,0.2)] animate-in fade-in slide-in-from-bottom-4 duration-700 z-20 relative">
-                        <span className="relative flex h-2 w-2">
+                    <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full animated-border-badge backdrop-blur-3xl bg-white/60 dark:bg-slate-900/60 text-brand-700 dark:text-brand-300 font-semibold text-sm mb-10 shadow-[0_0_30px_rgba(99,102,241,0.25)] dark:shadow-[0_0_30px_rgba(99,102,241,0.15)] animate-in fade-in slide-in-from-bottom-4 duration-700 z-20 relative">
+                        <span className="relative flex h-2.5 w-2.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-500"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-600 dark:bg-brand-500"></span>
                         </span>
                         New exclusive WFH live projects added weekly
-                        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-brand-500/20 to-purple-500/20 blur-md -z-10"></div>
                     </div>
 
-                    <h1 className="text-6xl sm:text-7xl md:text-8xl font-heading font-black tracking-tighter text-slate-900 dark:text-white mb-6 leading-[1.1] animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
-                        Build your <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 via-purple-500 to-brand-500 animate-gradient">Edge</span> with 100% Remote Experience
+                    <h1 className="text-5xl sm:text-7xl md:text-[6.5rem] font-heading font-black tracking-tighter text-slate-900 dark:text-white mb-8 leading-[1.05] animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+                        Build your <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-pink-500 to-purple-600 animate-gradient pb-2">Edge</span> <br className="hidden md:block" /> with 100% Remote Experience
                     </h1>
 
-                    <p className="text-xl sm:text-2xl text-slate-600 dark:text-slate-400 mb-12 max-w-2xl mx-auto font-medium animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
+                    <p className="text-lg sm:text-2xl text-slate-600 dark:text-slate-400 mb-8 sm:mb-12 max-w-2xl mx-auto font-medium animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
                         Connect with top companies globally. Work exclusively on Work-From-Home (WFH) engineering and management projects. <span className="text-slate-900 dark:text-slate-200">Stand out before you graduate.</span>
                     </p>
 
@@ -50,7 +49,7 @@ const Hero = () => {
                     </div>
                 </div>
 
-                <div className="mt-24 w-full max-w-7xl mx-auto">
+                <div className="mt-16 sm:mt-24 w-full max-w-7xl mx-auto">
                     <p className="text-center text-xs font-bold text-slate-500 tracking-[0.2em] uppercase mb-8 opacity-80">
                         Trusted by hyper-growth teams globally
                     </p>

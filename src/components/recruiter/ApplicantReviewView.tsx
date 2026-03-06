@@ -6,9 +6,11 @@ interface ApplicantReviewViewProps {
     onClose: () => void;
     onAccept: (candidateId: string) => void;
     onDecline: (candidateId: string) => void;
+    isArchived?: boolean;
+    onRevert?: (candidateId: string) => void;
 }
 
-const ApplicantReviewView = ({ candidate, onClose, onAccept, onDecline }: ApplicantReviewViewProps) => {
+const ApplicantReviewView = ({ candidate, onClose, onAccept, onDecline, isArchived = false, onRevert }: ApplicantReviewViewProps) => {
     return (
         <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-lg mt-4 animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
@@ -80,7 +82,14 @@ const ApplicantReviewView = ({ candidate, onClose, onAccept, onDecline }: Applic
 
                         {/* Decision Actions */}
                         <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 flex gap-4">
-                            {(candidate as any).applicationStatus === 'accepted' ? (
+                            {isArchived ? (
+                                <button
+                                    onClick={() => onRevert && onRevert(candidate.id)}
+                                    className="flex-1 py-3 flex items-center justify-center gap-2 text-white bg-slate-700 hover:bg-slate-600 rounded-xl transition-colors shadow-md font-bold btn-interactive"
+                                >
+                                    Revert to Applicant Pool
+                                </button>
+                            ) : (candidate as any).applicationStatus === 'accepted' ? (
                                 <div className="flex-1 py-3 flex items-center justify-center gap-2 text-green-700 bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400 rounded-xl font-bold cursor-not-allowed">
                                     <CheckCircle className="w-5 h-5" /> Accepted
                                 </div>

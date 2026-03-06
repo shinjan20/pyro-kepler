@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Briefcase, Users, PlusCircle, MapPin, Clock, FileText, Download, CheckCircle, MessageSquare } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import PostProjectModal from '../components/recruiter/PostProjectModal';
 import StudentProfileCard, { type StudentProfile } from '../components/recruiter/StudentProfileCard';
 import StudentProfileModal from '../components/recruiter/StudentProfileModal';
@@ -7,7 +8,11 @@ import ProjectDashboard from '../components/recruiter/ProjectDashboard';
 import MessagingHub from '../components/recruiter/MessagingHub';
 import ConfirmModal from '../components/ConfirmModal';
 import CollaboratedTalentCard from '../components/recruiter/CollaboratedTalentCard';
-import { MOCK_PROFILES, INITIAL_ARCHIVED_PROJECTS, MOCK_PROJECTS, MOCK_COLLABORATED_TALENT, MOCK_MESSAGES } from '../constants';
+import { MOCK_PROFILES, INITIAL_ARCHIVED_PROJECTS, MOCK_PROJECTS, MOCK_COLLABORATED_TALENT, MOCK_MESSAGES, DOMAINS } from '../constants';
+import CelebrationModal from '../components/CelebrationModal';
+import toast from 'react-hot-toast';
+
+const MOCK_COLLEGES = Array.from(new Set(MOCK_PROFILES.map(p => p.college)));
 
 const RecruiterDashboard = () => {
     const [activeTab, setActiveTab] = useState<'projects' | 'talent' | 'collaborated' | 'messages'>('projects');
@@ -52,6 +57,22 @@ const RecruiterDashboard = () => {
         setArchivedProjects(prev => [...archivedToAppend, ...prev]);
     }, []);
 
+    const location = useLocation();
+
+    // Check if we just navigated from a successful new recruiter registration
+    useEffect(() => {
+        if (location.state?.isNewRecruiter) {
+            setCelebrationData({
+                title: 'Welcome Aboard!',
+                message: 'Your recruiter account has been successfully created. You can now start posting projects and finding top talent!'
+            });
+            setShowCelebration(true);
+
+            // Clear the state so it doesn't re-trigger on refresh
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state]);
+
     const [isPostProjectModalOpen, setIsPostProjectModalOpen] = useState(false);
     const [editingProjectData, setEditingProjectData] = useState<any | null>(null);
 
@@ -62,9 +83,35 @@ const RecruiterDashboard = () => {
     // Project Details Modal State
     const [selectedProject, setSelectedProject] = useState<any | null>(null);
     const [isProjectDetailsModalOpen, setIsProjectDetailsModalOpen] = useState(false);
+    const [projectInitialTab, setProjectInitialTab] = useState<'details' | 'applicants' | 'archived' | 'working'>('details');
 
     // Modal Archive Confirmation State
     const [confirmingArchiveId, setConfirmingArchiveId] = useState<string | null>(null);
+
+    // Celebration Modal State
+    const [showCelebration, setShowCelebration] = useState(false);
+    const [celebrationData, setCelebrationData] = useState<{
+        title: string;
+        message: string;
+        primaryActionText?: string;
+        onPrimaryAction?: () => void;
+    }>({ title: '', message: '' });
+
+    // Discover Talent Filters and Sort State
+    const [filterDomain, setFilterDomain] = useState<string>('All');
+    const [filterCollege, setFilterCollege] = useState<string>('All');
+    const [sortOption, setSortOption] = useState<string>('Completed Projects (High to Low)');
+
+    const filteredAndSortedProfiles = MOCK_PROFILES.filter(profile => {
+        const domainMatch = filterDomain === 'All' || profile.domain === filterDomain;
+        const collegeMatch = filterCollege === 'All' || profile.college === filterCollege;
+        return domainMatch && collegeMatch;
+    }).sort((a, b) => {
+        if (sortOption === 'Completed Projects (High to Low)') return b.completedProjects - a.completedProjects;
+        if (sortOption === 'Completed Projects (Low to High)') return a.completedProjects - b.completedProjects;
+        if (sortOption === 'Name (A-Z)') return a.name.localeCompare(b.name);
+        return 0; // default
+    });
 
     const handlePostProject = (projectData: any) => {
         if (editingProjectData) {
@@ -95,7 +142,13 @@ const RecruiterDashboard = () => {
 
     const handleProjectClick = (project: any) => {
         setSelectedProject(project);
+        setProjectInitialTab('details');
         setIsProjectDetailsModalOpen(true);
+    };
+
+    const handleArchiveConfirmTrigger = (projectId: string) => {
+        setConfirmingArchiveId(projectId);
+        setIsProjectDetailsModalOpen(false); // Close details modal when checking archive to let ConfirmModal sit top 
     };
 
     const handleArchiveProject = () => {
@@ -107,10 +160,41 @@ const RecruiterDashboard = () => {
             setArchivedProjects([{ ...projectToArchive, status: 'completed' }, ...archivedProjects]);
             setIsProjectDetailsModalOpen(false); // Close the details modal if open
             setConfirmingArchiveId(null); // Close the confirm modal
+
+            // Check if there are candidate to send letters to
+            const hasCandidates = projectToArchive.workingCandidates && projectToArchive.workingCandidates.length > 0;
+
+            setCelebrationData({
+                title: 'Project Completed!',
+                message: `Congratulations on archiving "${projectToArchive.role}"! ${hasCandidates ? 'Would you like to send completion letters to the students who worked on this project?' : 'You have successfully moved this project to your archived list.'}`,
+                ...(hasCandidates ? {
+                    primaryActionText: 'Send Letters',
+                    onPrimaryAction: () => {
+                        // Create a message thread for each working candidate
+                        projectToArchive.workingCandidates?.forEach((candidate: any) => {
+                            handleSendLetter(projectToArchive.id, candidate.id, 'completion', `Congratulations on successfully completing the ${projectToArchive.role} project! Please find your completion letter attached.`);
+                        });
+                        setShowCelebration(false);
+                        setActiveTab('messages');
+
+                        // Show alert
+                        setTimeout(() => {
+                            toast.success('Completion letters have been generated and sent to all associated candidates.');
+                        }, 500);
+                    }
+                } : {})
+            });
+            setShowCelebration(true);
         }
     };
 
     const handleAcceptCandidate = (projectId: string, candidateId: string) => {
+        const project = activeProjects.find(p => p.id === projectId);
+        if (project && project.workingCandidates && project.workingCandidates.length >= (project.positions || 1)) {
+            toast.error('Cannot accept more candidates. All positions are filled for this project.');
+            return;
+        }
+
         let acceptedCandidate: any = null;
 
         setActiveProjects(prev => prev.map(p => {
@@ -150,6 +234,14 @@ const RecruiterDashboard = () => {
             }
             return prev;
         });
+
+        if (acceptedCandidate) {
+            setCelebrationData({
+                title: 'Accepted for Interview!',
+                message: `${acceptedCandidate.name} has been accepted for an interview. You can now message the candidate to schedule the recruitment process.`
+            });
+            setShowCelebration(true);
+        }
 
         // Close modal and switch to messages tab
         setIsProjectDetailsModalOpen(false);
@@ -198,7 +290,7 @@ const RecruiterDashboard = () => {
         setActiveTab('messages');
     };
 
-    const handleSendLetter = (projectId: string, candidateId: string, type: 'joining' | 'completion', content: string) => {
+    const handleSendLetter = (projectId: string, candidateId: string, _type: 'joining' | 'completion' | 'discovery', content: string) => {
         setThreads(prev => {
             const existingThread = prev.find(t => t.projectId === projectId && t.candidateId === candidateId);
             const newMessage = {
@@ -219,12 +311,52 @@ const RecruiterDashboard = () => {
                     id: Date.now().toString(),
                     projectId,
                     candidateId,
-                    status: 'selected',
+                    status: 'active',
                     messages: [newMessage]
                 };
                 return [newThread, ...prev];
             }
         });
+
+        if (_type === 'discovery') {
+            toast.success('Your message has been sent to the candidate successfully!');
+        }
+    };
+
+    const handleCompleteProject = (projectId: string, candidateId: string) => {
+        setActiveProjects(prev => prev.map(p => {
+            if (p.id === projectId) {
+                const candidate = p.workingCandidates?.find((c: any) => c.id === candidateId);
+                if (candidate) {
+                    const updatedProject = {
+                        ...p,
+                        workingCandidates: p.workingCandidates.filter((c: any) => c.id !== candidateId),
+                        archivedCandidates: [...(p.archivedCandidates || []), { ...candidate, applicationStatus: 'completed' }]
+                    };
+                    if (selectedProject?.id === projectId) setSelectedProject(updatedProject);
+                    return updatedProject;
+                }
+            }
+            return p;
+        }));
+    };
+
+    const handleRevertCandidate = (projectId: string, candidateId: string) => {
+        setActiveProjects(prev => prev.map(p => {
+            if (p.id === projectId) {
+                const candidate = p.archivedCandidates?.find((c: any) => c.id === candidateId);
+                if (candidate) {
+                    const updatedProject = {
+                        ...p,
+                        archivedCandidates: p.archivedCandidates.filter((c: any) => c.id !== candidateId),
+                        appliedCandidates: [...(p.appliedCandidates || []), { ...candidate, applicationStatus: 'pending' }]
+                    };
+                    if (selectedProject?.id === projectId) setSelectedProject(updatedProject);
+                    return updatedProject;
+                }
+            }
+            return p;
+        }));
     };
 
     const handleCandidateMessageStatusChange = (projectId: string, candidateId: string, status: 'selected' | 'rejected') => {
@@ -251,9 +383,9 @@ const RecruiterDashboard = () => {
                     let newArchived = p.archivedCandidates?.filter((c: any) => c.id !== candidateId) || [];
 
                     if (status === 'selected') {
-                        newWorking.push(candidate);
+                        newWorking.push({ ...candidate, applicationStatus: 'accepted' });
                     } else if (status === 'rejected') {
-                        newArchived.push(candidate);
+                        newArchived.push({ ...candidate, applicationStatus: 'rejected' });
                     }
 
                     const updatedProject = {
@@ -262,6 +394,22 @@ const RecruiterDashboard = () => {
                         workingCandidates: newWorking,
                         archivedCandidates: newArchived
                     };
+
+                    if (status === 'selected') {
+                        setCelebrationData({
+                            title: 'Candidate Hired!',
+                            message: `${candidate.name} is hired and moved to the Currently Working tab of the project.`,
+                            primaryActionText: 'View Working Tab',
+                            onPrimaryAction: () => {
+                                setShowCelebration(false);
+                                setSelectedProject(updatedProject);
+                                setProjectInitialTab('working');
+                                setIsProjectDetailsModalOpen(true);
+                            }
+                        });
+                        setShowCelebration(true);
+                    }
+
                     return updatedProject;
                 }
             }
@@ -338,10 +486,9 @@ const RecruiterDashboard = () => {
                     </nav>
                 </div>
 
-                {/* Content Area */}
                 <div className="mt-8">
                     {activeTab === 'projects' && (
-                        <div>
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                             {/* Project List will go here */}
                             {activeProjects.length === 0 ? (
                                 <div className="text-center py-20 glass-card">
@@ -388,7 +535,7 @@ const RecruiterDashboard = () => {
                                                         <Clock className="w-4 h-4 mr-1 text-slate-400" /> {project.tenure} Months
                                                     </div>
                                                     <div className="flex items-center gap-1.5 text-sm font-medium text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 px-2 py-0.5 rounded-md mt-1 mb-2">
-                                                        <Users className="w-4 h-4" /> {project.positions - (project.hiredPositions || 0)} {Math.abs(project.positions - (project.hiredPositions || 0)) === 1 ? 'Position' : 'Positions'} Left
+                                                        <Users className="w-4 h-4" /> {project.positions - (project.workingCandidates?.length || 0)} {Math.abs(project.positions - (project.workingCandidates?.length || 0)) === 1 ? 'Position' : 'Positions'} Left
                                                     </div>
                                                 </div>
 
@@ -450,8 +597,8 @@ const RecruiterDashboard = () => {
                                                     <div className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-2 rounded-lg">
                                                         <Briefcase className="w-6 h-6" />
                                                     </div>
-                                                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${(!project.hiredPositions || project.hiredPositions === 0) ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}>
-                                                        {(!project.hiredPositions || project.hiredPositions === 0) ? 'Expired' : 'Completed'}
+                                                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${(!project.workingCandidates?.length || project.workingCandidates.length === 0) ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}>
+                                                        {(!project.workingCandidates?.length || project.workingCandidates.length === 0) ? 'Expired' : 'Completed'}
                                                     </span>
                                                 </div>
                                                 <h3 className="font-heading font-bold text-xl text-slate-700 dark:text-slate-300 mb-2">{project.role}</h3>
@@ -466,7 +613,7 @@ const RecruiterDashboard = () => {
                                                             <Clock className="w-4 h-4" /> {project.tenure}
                                                         </div>
                                                         <div className="flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-400">
-                                                            <Users className="w-4 h-4 text-slate-400" /> {project.hiredPositions || 0}/{project.positions || 1} Hired
+                                                            <Users className="w-4 h-4 text-slate-400" /> {project.workingCandidates?.length || 0}/{project.positions || 1} Hired
                                                         </div>
                                                     </div>
                                                 </div>
@@ -479,9 +626,48 @@ const RecruiterDashboard = () => {
                     )}
 
                     {activeTab === 'talent' && (
-                        <div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {MOCK_PROFILES.map(profile => (
+                        <div className="overflow-x-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <div className="flex flex-col sm:flex-row items-center justify-between mb-6 shrink-0 gap-4 overflow-x-auto pb-2">
+                                <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto min-w-max">
+                                    <div className="flex flex-col gap-1 w-full sm:w-auto">
+                                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Domain</label>
+                                        <select
+                                            value={filterDomain}
+                                            onChange={(e) => setFilterDomain(e.target.value)}
+                                            className="w-full sm:w-48 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                                        >
+                                            <option value="All">All Domains</option>
+                                            {DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex flex-col gap-1 w-full sm:w-auto">
+                                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">College</label>
+                                        <select
+                                            value={filterCollege}
+                                            onChange={(e) => setFilterCollege(e.target.value)}
+                                            className="w-full sm:w-64 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                                        >
+                                            <option value="All">All Colleges</option>
+                                            {MOCK_COLLEGES.map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-1 w-full sm:w-auto">
+                                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Sort By</label>
+                                    <select
+                                        value={sortOption}
+                                        onChange={(e) => setSortOption(e.target.value)}
+                                        className="w-full sm:w-64 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                                    >
+                                        <option value="Completed Projects (High to Low)">Projects (High to Low)</option>
+                                        <option value="Completed Projects (Low to High)">Projects (Low to High)</option>
+                                        <option value="Name (A-Z)">Name (A-Z)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-4">
+                                {filteredAndSortedProfiles.map(profile => (
                                     <StudentProfileCard
                                         key={profile.id}
                                         profile={profile}
@@ -493,7 +679,7 @@ const RecruiterDashboard = () => {
                     )}
 
                     {activeTab === 'collaborated' && (
-                        <div>
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {MOCK_COLLABORATED_TALENT.map(collab => (
                                     <CollaboratedTalentCard key={collab.id} collab={collab} />
@@ -503,12 +689,14 @@ const RecruiterDashboard = () => {
                     )}
 
                     {activeTab === 'messages' && (
-                        <MessagingHub
-                            projects={activeProjects}
-                            threads={threads}
-                            setThreads={setThreads}
-                            onUpdateCandidateStatus={handleCandidateMessageStatusChange}
-                        />
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <MessagingHub
+                                projects={activeProjects}
+                                threads={threads}
+                                setThreads={setThreads}
+                                onUpdateCandidateStatus={handleCandidateMessageStatusChange}
+                            />
+                        </div>
                     )}
                 </div>
 
@@ -529,18 +717,23 @@ const RecruiterDashboard = () => {
                 onClose={() => setIsProfileModalOpen(false)}
                 profile={selectedProfile}
                 hasActiveProjects={activeProjects.length > 0 || archivedProjects.length > 0}
+                activeProjects={activeProjects}
                 onPostProjectClick={() => setIsPostProjectModalOpen(true)}
+                onMessageInitiated={(projectId, candidateId, message) => handleSendLetter(projectId, candidateId, 'discovery', message)}
             />
 
             <ProjectDashboard
                 isOpen={isProjectDetailsModalOpen}
                 onClose={() => setIsProjectDetailsModalOpen(false)}
                 project={selectedProject}
-                onArchive={handleArchiveProject}
+                initialTab={projectInitialTab}
+                onArchive={handleArchiveConfirmTrigger}
                 onAcceptCandidate={handleAcceptCandidate}
                 onDeclineCandidate={handleDeclineCandidate}
                 onMessageWorkingCandidate={handleMessageWorkingCandidate}
                 onSendLetter={handleSendLetter}
+                onCompleteProject={handleCompleteProject}
+                onRevertCandidate={handleRevertCandidate}
             />
 
             <ConfirmModal
@@ -552,6 +745,15 @@ const RecruiterDashboard = () => {
                 type="warning"
                 onConfirm={handleArchiveProject}
                 onCancel={() => setConfirmingArchiveId(null)}
+            />
+
+            <CelebrationModal
+                isOpen={showCelebration}
+                onClose={() => setShowCelebration(false)}
+                title={celebrationData.title}
+                message={celebrationData.message}
+                primaryActionText={celebrationData.primaryActionText}
+                onPrimaryAction={celebrationData.onPrimaryAction}
             />
         </div>
     );

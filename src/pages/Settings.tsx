@@ -1,6 +1,18 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Briefcase, Mail, Globe, Save, Lock } from 'lucide-react';
+import { User, Briefcase, Mail, Globe, Save, Lock, Building2, BookOpen, Link as LinkIcon } from 'lucide-react';
+
+// DOMAINS reference duplicated from the profile form logic
+const DOMAINS = [
+    'Software Engineering',
+    'Data Science & AI',
+    'Product Management',
+    'Design (UI/UX)',
+    'Marketing',
+    'Operations',
+    'Business Analyst',
+    'Other'
+];
 
 const Settings = () => {
     const { userRole, userName, login } = useAuth();
@@ -13,6 +25,11 @@ const Settings = () => {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
 
+    // Student specific variables
+    const [college, setCollege] = useState(localStorage.getItem('studentCollege') || '');
+    const [domain, setDomain] = useState(localStorage.getItem('studentDomain') || '');
+    const [resumeUrl, setResumeUrl] = useState(localStorage.getItem('studentResumeUrl') || '');
+
     const [isSaving, setIsSaving] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
 
@@ -24,6 +41,14 @@ const Settings = () => {
         // Simulate API save
         setTimeout(() => {
             login(userRole, name); // Update the name in context
+
+            // Save student data if applicable
+            if (userRole === 'student') {
+                localStorage.setItem('studentCollege', college);
+                localStorage.setItem('studentDomain', domain);
+                localStorage.setItem('studentResumeUrl', resumeUrl);
+            }
+
             setIsSaving(false);
             setSuccessMessage('Profile details updated successfully.');
 
@@ -100,7 +125,7 @@ const Settings = () => {
                                     </div>
                                 </div>
 
-                                {userRole === 'recruiter' && (
+                                {userRole === 'recruiter' ? (
                                     <>
                                         <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
                                             <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Company Details</h3>
@@ -134,6 +159,66 @@ const Settings = () => {
                                                     value={companyWebsite}
                                                     onChange={(e) => setCompanyWebsite(e.target.value)}
                                                     className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all font-medium"
+                                                />
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+                                            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Student Profile Details</h3>
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="college" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">College / University Name</label>
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <Building2 className="h-5 w-5 text-slate-400" />
+                                                </div>
+                                                <input
+                                                    id="college"
+                                                    type="text"
+                                                    value={college}
+                                                    onChange={(e) => setCollege(e.target.value)}
+                                                    className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all font-medium"
+                                                    placeholder="e.g. Indian Institute of Technology"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="domain" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Preferred Domain</label>
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <BookOpen className="h-5 w-5 text-slate-400" />
+                                                </div>
+                                                <select
+                                                    id="domain"
+                                                    value={domain}
+                                                    onChange={(e) => setDomain(e.target.value)}
+                                                    className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all appearance-none font-medium"
+                                                >
+                                                    <option value="" disabled>Select your primary domain</option>
+                                                    {DOMAINS.map(d => (
+                                                        <option key={d} value={d} className="bg-white dark:bg-slate-900">{d}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label htmlFor="resumeUrl" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Resume / CV Link</label>
+                                            <div className="relative">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <LinkIcon className="h-5 w-5 text-slate-400" />
+                                                </div>
+                                                <input
+                                                    id="resumeUrl"
+                                                    type="url"
+                                                    value={resumeUrl}
+                                                    onChange={(e) => setResumeUrl(e.target.value)}
+                                                    className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all font-medium"
+                                                    placeholder="https://drive.google.com/..."
                                                 />
                                             </div>
                                         </div>

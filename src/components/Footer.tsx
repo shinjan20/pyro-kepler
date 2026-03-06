@@ -13,7 +13,7 @@ const Footer = () => {
                                 <Briefcase className="w-5 h-5 text-white" />
                             </div>
                             <span className="font-heading font-bold text-xl tracking-tight text-slate-900 dark:text-white">
-                                ProjectHub
+                                ProjectMatch
                             </span>
                         </div>
                         <p className="text-slate-500 dark:text-slate-400 mb-6">
@@ -65,7 +65,7 @@ const Footer = () => {
 
                 <div className="border-t border-slate-200 dark:border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
                     <p className="text-slate-500 text-sm">
-                        &copy; {new Date().getFullYear()} ProjectHub. All rights reserved.
+                        &copy; {new Date().getFullYear()} ProjectMatch. All rights reserved.
                     </p>
                     <div className="flex items-center gap-2 text-sm text-slate-500">
                         Made with <span className="text-red-500">♥</span> for students.
