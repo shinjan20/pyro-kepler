@@ -24,7 +24,7 @@ const StudentProfileCard = ({ profile, onClick }: StudentProfileCardProps) => {
     return (
         <div
             onClick={() => onClick(profile)}
-            className="glass-card p-6 flex flex-col items-center cursor-pointer group"
+            className="glass-card p-4 sm:p-6 flex flex-col items-center cursor-pointer group"
         >
             <div className="relative mb-4">
                 {profile.photoUrl ? (

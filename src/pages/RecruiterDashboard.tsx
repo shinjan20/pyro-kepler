@@ -511,7 +511,7 @@ const RecruiterDashboard = () => {
                                         <div
                                             key={project.id}
                                             onClick={() => handleProjectClick(project)}
-                                            className="glass-card p-6 flex flex-col cursor-pointer hover:border-brand-500/50 hover:shadow-lg transition-all"
+                                            className="glass-card p-4 sm:p-6 flex flex-col cursor-pointer hover:border-brand-500/50 hover:shadow-lg transition-all"
                                         >
                                             <div className="flex justify-between items-start mb-4">
                                                 <div className="bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 p-2 rounded-lg">
@@ -591,7 +591,7 @@ const RecruiterDashboard = () => {
                                             <div
                                                 key={project.id}
                                                 onClick={() => handleProjectClick(project)}
-                                                className="glass-card p-6 flex flex-col cursor-pointer border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md transition-all opacity-80 hover:opacity-100"
+                                                className="glass-card p-4 sm:p-6 flex flex-col cursor-pointer border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md transition-all opacity-80 hover:opacity-100"
                                             >
                                                 <div className="flex justify-between items-start mb-4">
                                                     <div className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-2 rounded-lg">

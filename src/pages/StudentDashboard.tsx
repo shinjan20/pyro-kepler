@@ -81,7 +81,7 @@ export default function StudentDashboard() {
                     {iconType === 'briefcase' && (
                         <button
                             onClick={() => navigate('/projects')}
-                            className="mt-8 px-6 py-3 bg-brand-50 hover:bg-brand-100 dark:bg-brand-900/20 dark:hover:bg-brand-900/40 text-brand-600 dark:text-brand-400 font-bold rounded-xl transition-all flex items-center gap-2 "
+                            className="mt-8 px-6 py-3 bg-brand-50 hover:bg-brand-100 dark:bg-brand-900/20 dark:hover:bg-brand-900/40 text-brand-600 dark:text-brand-400 font-bold rounded-xl transition-all flex items-center gap-2 btn-interactive"
                         >
                             Browse matching projects
                         </button>
@@ -95,7 +95,7 @@ export default function StudentDashboard() {
                 {projects.map(project => (
                     <div
                         key={project.id}
-                        className="glass-card p-6 flex flex-col group/card hover:border-brand-500/50 transition-all"
+                        className="glass-card p-4 sm:p-6 flex flex-col group/card hover:border-brand-500/50 transition-all"
                     >
                         <div className="mb-4 flex items-start justify-between">
                             <span className="inline-flex px-3 py-1 rounded-full border border-brand-500/30 bg-brand-500/10 text-brand-700 dark:text-brand-300 text-xs font-bold tracking-widest uppercase">
@@ -174,7 +174,7 @@ export default function StudentDashboard() {
                                                 setDownloadingLetter(null);
                                             }, 2500);
                                         }}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-500/20 rounded-lg font-semibold transition-colors"
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-500/20 rounded-lg font-semibold transition-colors btn-interactive"
                                     >
                                         <Download className="w-3.5 h-3.5" /> Offer Letter
                                     </button>

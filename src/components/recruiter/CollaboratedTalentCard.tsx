@@ -45,7 +45,7 @@ const CollaboratedTalentCard = ({ collab }: CollaboratedTalentCardProps) => {
     };
 
     return (
-        <div className="glass-card p-6 flex flex-col hover:border-brand-500/50 hover:shadow-lg transition-all">
+        <div className="glass-card p-4 sm:p-6 flex flex-col hover:border-brand-500/50 hover:shadow-lg transition-all">
             <div className="flex items-start gap-4 mb-4">
                 <img src={collab.photoUrl} alt={collab.name} className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700" />
                 <div>

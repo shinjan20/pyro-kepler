@@ -69,7 +69,7 @@ export default function CompletedProjects() {
                             {completedProjects.map(project => (
                                 <div
                                     key={project.id}
-                                    className="glass-card p-6 flex flex-col group/card hover:border-brand-500/50 transition-all opacity-90 hover:opacity-100"
+                                    className="glass-card p-4 sm:p-6 flex flex-col group/card hover:border-brand-500/50 transition-all opacity-90 hover:opacity-100"
                                 >
                                     <div className="mb-4 flex items-start justify-between">
                                         <span className="inline-flex px-3 py-1 rounded-full border border-brand-500/30 bg-brand-500/10 text-brand-700 dark:text-brand-300 text-xs font-bold tracking-widest uppercase">

@@ -22,8 +22,11 @@
     color-scheme: light dark;
   }
 
+  html,
   body {
     @apply bg-slate-50 text-slate-900 antialiased selection:bg-brand-500 selection:text-white;
+    overflow-x: hidden;
+    width: 100%;
   }
 
   /* Dark mode preferences */
@@ -103,16 +106,27 @@
   }
 
   .btn-interactive {
-    @apply transition-all duration-300 active:scale-[0.98] hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden;
+    @apply transition-all duration-300 active:scale-[0.95] hover:shadow-xl hover:shadow-brand-500/20 hover:-translate-y-1 relative overflow-hidden;
   }
 
+  /* Sweep shine effect on hover */
+  .btn-interactive::before {
+    content: '';
+    @apply absolute top-0 left-0 w-[150%] h-full bg-gradient-to-r from-transparent via-white/20 dark:via-white/10 to-transparent -translate-x-[150%] skew-x-[-20deg] transition-all duration-[600ms] pointer-events-none z-10;
+  }
+
+  .btn-interactive:hover::before {
+    @apply translate-x-[100%];
+  }
+
+  /* Bloom ring effect on click */
   .btn-interactive::after {
     content: '';
-    @apply absolute inset-0 bg-white/20 translate-y-full transition-transform duration-300 rounded-[inherit];
+    @apply absolute inset-0 rounded-[inherit] ring-0 ring-brand-500/0 transition-all duration-300 pointer-events-none z-0;
   }
 
-  .btn-interactive:hover::after {
-    @apply translate-y-0 opacity-100;
+  .btn-interactive:active::after {
+    @apply ring-4 ring-brand-500/30 duration-0;
   }
 
   .interactive-glow:hover {

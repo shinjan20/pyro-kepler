@@ -113,7 +113,7 @@ const Navbar = () => {
                                     </button>
 
                                     {showStatusMenu && (
-                                        <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-2 z-50 animate-in fade-in slide-in-from-top-2">
+                                        <div className="absolute top-full right-0 mt-2 w-max max-w-[90vw] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-2 z-50 animate-in fade-in slide-in-from-top-2 origin-top-right">
                                             <button
                                                 onClick={() => { setInterviewStatus('ready'); setShowStatusMenu(false); }}
                                                 className={`w-full text-left flex gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${interviewStatus === 'ready' ? 'bg-slate-50 dark:bg-slate-800' : ''}`}

@@ -197,7 +197,7 @@ const Projects = () => {
                             ))}
                             <button
                                 onClick={() => setIsFiltersModalOpen(true)}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full text-sm font-medium hover:scale-105 transition-all shadow-xl shadow-slate-900/10 active:scale-95 ml-2 relative"
+                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full text-sm font-medium transition-all shadow-xl shadow-slate-900/10 btn-interactive ml-2 relative"
                             >
                                 <Filter className="w-4 h-4" /> Filters
                                 {(activeFilters.duration.length > 0 || activeFilters.stipend !== '' || activeFilters.skills.length > 0 || activeFilters.workType.length > 0 || activeFilters.showBookmarkedOnly) && (
@@ -219,7 +219,7 @@ const Projects = () => {
                                 <div
                                     key={project.id}
                                     onClick={() => setViewingProjectId(project.id)}
-                                    className="glass-card p-6 flex flex-col group/card cursor-pointer hover:border-brand-500/50"
+                                    className="glass-card p-4 sm:p-6 flex flex-col group/card cursor-pointer hover:border-brand-500/50"
                                 >
                                     <div className="mb-5 flex items-start justify-between">
                                         <div className="relative">
@@ -243,7 +243,7 @@ const Projects = () => {
                                         )}
                                     </div>
 
-                                    <h3 className="text-2xl font-bold font-heading text-slate-900 dark:text-white mb-3 group-hover/card:text-transparent group-hover/card:bg-clip-text group-hover/card:bg-gradient-to-r group-hover/card:from-brand-500 group-hover/card:to-purple-500 transition-all duration-300">
+                                    <h3 className="text-2xl font-bold font-heading text-slate-900 dark:text-white mb-3 group-hover/card:text-transparent group-hover/card:bg-clip-text group-hover/card:bg-gradient-to-r group-hover/card:from-brand-500 group-hover/card:to-purple-500 transition-all duration-300 break-words hyphens-auto">
                                         {project.title}
                                     </h3>
 
@@ -302,7 +302,7 @@ const Projects = () => {
                                                 {!isAuthenticated ? (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); navigate('/login?returnTo=/projects'); }}
-                                                        className="relative w-full bg-slate-900/90 dark:bg-white/90 text-white dark:text-slate-900 py-3 rounded-[11px] font-semibold hover:bg-slate-800 dark:hover:bg-white transition-colors flex items-center justify-center gap-2 z-10 opacity-70 group-hover/card:opacity-100 backdrop-blur-md"
+                                                        className="relative w-full bg-slate-900/90 dark:bg-white/90 text-white dark:text-slate-900 py-3 rounded-[11px] font-semibold hover:bg-slate-800 dark:hover:bg-white transition-colors flex items-center justify-center gap-2 z-10 opacity-70 group-hover/card:opacity-100 backdrop-blur-md btn-interactive"
                                                     >
                                                         Login to Apply <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                                                     </button>
@@ -316,7 +316,7 @@ const Projects = () => {
                                                         title={interviewStatus === 'closed' ? "Your profile is closed to projects." : ""}
                                                         className={`relative w-full text-white py-3 rounded-[11px] font-semibold transition-colors flex items-center justify-center gap-2 z-10 backdrop-blur-md ${interviewStatus === 'closed'
                                                             ? 'bg-brand-600/50 cursor-not-allowed opacity-50 grayscale blur-[1px]'
-                                                            : 'bg-brand-600/90 hover:bg-brand-500 opacity-70 group-hover/card:opacity-100'
+                                                            : 'bg-brand-600/90 hover:bg-brand-500 opacity-70 group-hover/card:opacity-100 btn-interactive'
                                                             }`}
                                                     >
                                                         Apply Now <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
@@ -337,7 +337,7 @@ const Projects = () => {
                                 <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">We couldn't find anything matching your current filters. Try broadening your search terms.</p>
                                 <button
                                     onClick={() => { setSearchTerm(''); setSelectedCategory('All'); }}
-                                    className="mt-8 text-white bg-brand-600 hover:bg-brand-500 font-medium px-6 py-3 rounded-full transition-all shadow-lg shadow-brand-500/20 active:scale-95"
+                                    className="mt-8 text-white bg-brand-600 hover:bg-brand-500 font-medium px-6 py-3 rounded-full transition-all shadow-lg shadow-brand-500/20 btn-interactive"
                                 >
                                     Reset all filters
                                 </button>
