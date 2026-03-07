@@ -1,30 +1,54 @@
-import { useState } from 'react';
-import { Send, CheckCircle, XCircle, Search, Clock, MessageSquare, Briefcase, ChevronLeft, AlertCircle } from 'lucide-react';
-import { MOCK_PROFILES } from '../../constants';
-import { useProfanityFilter } from '../../hooks/useProfanityFilter';
+import { useState, useRef, useEffect } from 'react';
+import { Send, CheckCircle, XCircle, Search, Clock, MessageSquare, Briefcase, ChevronLeft, AlertCircle, Paperclip, FileText, X, Download } from 'lucide-react';
+import { MOCK_PROFILES, MOCK_COLLABORATED_TALENT } from '../../constants';
+import { checkTextForProfanityAsync } from '../../utils/profanityFilter';
+import jsPDF from 'jspdf';
 
 interface MessagingHubProps {
     projects: any[]; // The active projects to match IDs
     threads: any[];
     setThreads: React.Dispatch<React.SetStateAction<any[]>>;
     onUpdateCandidateStatus: (projectId: string, candidateId: string, newStatus: 'selected' | 'rejected') => void;
+    initialActiveThreadId?: string | null;
 }
 
-const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }: MessagingHubProps) => {
+const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, initialActiveThreadId }: MessagingHubProps) => {
     // Basic local state to handle message sending and status changes in memory
-    const [activeThreadId, setActiveThreadId] = useState<string | null>(threads[0]?.id || null);
+    const [activeThreadId, setActiveThreadId] = useState<string | null>(initialActiveThreadId || threads[0]?.id || null);
     const [newMessage, setNewMessage] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'selected' | 'rejected'>('all');
     const [projectFilter, setProjectFilter] = useState<string>('all');
 
     // For mobile view toggling between list and chat
-    const [showMobileChat, setShowMobileChat] = useState(false);
+    const [showMobileChat, setShowMobileChat] = useState(!!initialActiveThreadId);
+    const [attachedFile, setAttachedFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const { containsProfanity } = useProfanityFilter();
+    const [isSending, setIsSending] = useState(false);
 
+    useEffect(() => {
+        if (initialActiveThreadId) {
+            setActiveThreadId(initialActiveThreadId);
+            setShowMobileChat(true);
+        }
+    }, [initialActiveThreadId]);
     const filteredThreads = threads.filter(thread => {
-        const threadCandidate = MOCK_PROFILES.find(p => p.id === thread.candidateId);
+        let threadCandidate = MOCK_PROFILES.find(p => p.id === thread.candidateId) as any;
+        if (!threadCandidate) {
+            const collabCandidate = (MOCK_COLLABORATED_TALENT as any[]).find(c => c.id === thread.candidateId);
+            if (collabCandidate) {
+                threadCandidate = {
+                    id: collabCandidate.id,
+                    name: collabCandidate.name,
+                    photoUrl: collabCandidate.photoUrl,
+                    domain: collabCandidate.domain,
+                    college: 'Unknown College',
+                    completedProjects: 1,
+                    pastProjects: []
+                };
+            }
+        }
         if (!threadCandidate) return false;
 
         const matchesSearch = threadCandidate.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -37,19 +61,38 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
     const activeThread = threads.find(t => t.id === activeThreadId);
 
     // Get candidate and project details for the active thread
-    const candidate = activeThread ? MOCK_PROFILES.find(p => p.id === activeThread.candidateId) : null;
+    let candidate = activeThread ? MOCK_PROFILES.find(p => p.id === activeThread.candidateId) as any : null;
+    if (!candidate && activeThread) {
+        const collabCandidate = (MOCK_COLLABORATED_TALENT as any[]).find(c => c.id === activeThread.candidateId);
+        if (collabCandidate) {
+            candidate = {
+                id: collabCandidate.id,
+                name: collabCandidate.name,
+                photoUrl: collabCandidate.photoUrl,
+                domain: collabCandidate.domain,
+                college: 'Unknown College',
+                completedProjects: 1,
+                pastProjects: []
+            };
+        }
+    }
+
     const project = activeThread ? projects.find(p => p.id === activeThread.projectId) : null;
 
     const [errorMessage, setErrorMessage] = useState('');
 
-    const handleSendMessage = (e: React.FormEvent) => {
+    const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         setErrorMessage('');
 
-        if (!newMessage.trim() || !activeThreadId) return;
+        if ((!newMessage.trim() && !attachedFile) || !activeThreadId) return;
 
-        if (containsProfanity(newMessage)) {
+        setIsSending(true);
+        const hasProfanity = await checkTextForProfanityAsync(newMessage);
+
+        if (hasProfanity) {
             setErrorMessage('Please use professional language. Unprofessional or inappropriate terms are strictly prohibited.');
+            setIsSending(false);
             return;
         }
 
@@ -63,7 +106,8 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
                             id: Date.now().toString(),
                             senderId: 'recruiter',
                             text: newMessage,
-                            timestamp: new Date().toISOString()
+                            timestamp: new Date().toISOString(),
+                            attachedFileName: attachedFile?.name || null
                         }
                     ]
                 };
@@ -71,6 +115,14 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
             return thread;
         }));
         setNewMessage('');
+        setAttachedFile(null);
+        setIsSending(false);
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            setAttachedFile(e.target.files[0]);
+        }
     };
 
     const handleUpdateCandidateStatus = (newStatus: 'selected' | 'rejected') => {
@@ -83,6 +135,63 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const generatePDF = (candidateData: any, projectData: any, messageText: string) => {
+        if (!candidateData) return;
+        const doc = new jsPDF();
+        const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        // Brand Header
+        doc.setFontSize(24);
+        doc.setTextColor(59, 130, 246); // Brand Color (blue-500 equivalent)
+        doc.text('projectMatch', 20, 30);
+
+        doc.setFontSize(10);
+        doc.setTextColor(100, 116, 139); // Slate-500
+        doc.text('Official Project Completion Letter', 20, 38);
+
+        // Date & Meta
+        doc.setFontSize(12);
+        doc.setTextColor(15, 23, 42); // Slate-900
+        doc.text(`Date: ${dateStr}`, 20, 60);
+
+        // Subject
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Letter of Completion', 105, 80, { align: 'center' });
+
+        // Body Content
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 65, 85); // Slate-700
+        const greeting = `To Whom It May Concern,`;
+        const p1 = `This letter is to formally certify that ${candidateData.name} has successfully completed their engagement on the project: "${projectData?.role || 'Independent Project'}".`;
+        const p2 = messageText;
+
+        // Wrap text to fit page bounds
+        const wrappedGreeting = doc.splitTextToSize(greeting, 170);
+        const wrappedP1 = doc.splitTextToSize(p1, 170);
+        const wrappedP2 = doc.splitTextToSize(p2, 170);
+
+        let yPos = 100;
+        doc.text(wrappedGreeting, 20, yPos);
+        yPos += wrappedGreeting.length * 7 + 5;
+
+        doc.text(wrappedP1, 20, yPos);
+        yPos += wrappedP1.length * 7 + 5;
+
+        doc.text(wrappedP2, 20, yPos);
+
+        // Signature
+        yPos += wrappedP2.length * 7 + 30;
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text('projectMatch Platform Administration', 20, yPos);
+
+        // Output
+        const safeName = candidateData.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        doc.save(`${safeName}_completion_letter.pdf`);
     };
 
     if (threads.length === 0) {
@@ -136,7 +245,21 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
 
                 <div className="flex-1 overflow-y-auto">
                     {filteredThreads.map(thread => {
-                        const threadCandidate = MOCK_PROFILES.find(p => p.id === thread.candidateId);
+                        let threadCandidate = MOCK_PROFILES.find(p => p.id === thread.candidateId) as any;
+                        if (!threadCandidate) {
+                            const collabCandidate = (MOCK_COLLABORATED_TALENT as any[]).find(c => c.id === thread.candidateId);
+                            if (collabCandidate) {
+                                threadCandidate = {
+                                    id: collabCandidate.id,
+                                    name: collabCandidate.name,
+                                    photoUrl: collabCandidate.photoUrl,
+                                    domain: collabCandidate.domain,
+                                    college: 'Unknown College',
+                                    completedProjects: 1,
+                                    pastProjects: []
+                                };
+                            }
+                        }
                         const lastMessage = thread.messages[thread.messages.length - 1];
                         const isActive = thread.id === activeThreadId;
 
@@ -262,7 +385,27 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
                                         ? 'bg-brand-600 text-white rounded-tr-none'
                                         : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-tl-none'
                                         }`}>
-                                        <p className="text-[14px] md:text-[15px] leading-relaxed break-words">{msg.text}</p>
+                                        {msg.attachedFileName && (
+                                            <div className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-2.5 rounded-lg mb-2 text-sm max-w-full ${isRecruiter ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                                                <div className="flex items-center gap-2 overflow-hidden flex-1">
+                                                    <FileText className="w-5 h-5 shrink-0" />
+                                                    <span className="truncate font-medium">{msg.attachedFileName}</span>
+                                                </div>
+                                                {msg.attachedFileName.toLowerCase().includes('completion') && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            generatePDF(candidate, project, msg.text);
+                                                        }}
+                                                        className="flex items-center gap-1.5 shrink-0 text-xs font-bold px-3 py-1.5 rounded bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm dark:bg-slate-800 dark:text-white dark:border-slate-700 dark:hover:bg-slate-700"
+                                                    >
+                                                        <Download className="w-3.5 h-3.5" />
+                                                        Download PDF
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                        {msg.text && <p className="text-[14px] md:text-[15px] leading-relaxed break-words">{msg.text}</p>}
                                     </div>
                                     <span className="text-[10px] md:text-xs text-slate-400 mt-1.5 flex items-center gap-1">
                                         <Clock className="w-3 h-3" /> {formatDate(msg.timestamp)} • {isRecruiter ? 'You' : candidate.name.split(' ')[0]}
@@ -281,21 +424,57 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
                             </div>
                         )}
                         {activeThread.status === 'active' ? (
-                            <form onSubmit={handleSendMessage} className="flex gap-3">
-                                <input
-                                    type="text"
-                                    value={newMessage}
-                                    onChange={(e) => setNewMessage(e.target.value)}
-                                    placeholder="Type your message..."
-                                    className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-900 dark:text-white transition-shadow"
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={!newMessage.trim()}
-                                    className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 text-white p-3 rounded-xl transition-colors shadow-sm flex items-center justify-center"
-                                >
-                                    <Send className="w-5 h-5" />
-                                </button>
+                            <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
+                                {attachedFile && (
+                                    <div className="flex items-center gap-2 p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm max-w-sm self-start mb-1 animation-in fade-in">
+                                        <FileText className="w-4 h-4 text-slate-500" />
+                                        <span className="truncate flex-1 text-slate-700 dark:text-slate-200 font-medium">
+                                            {attachedFile.name}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAttachedFile(null)}
+                                            className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
+                                <div className="flex gap-2 items-center">
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileChange}
+                                        className="hidden"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="p-3 text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                                        title="Attach file"
+                                    >
+                                        <Paperclip className="w-5 h-5" />
+                                    </button>
+
+                                    <input
+                                        type="text"
+                                        value={newMessage}
+                                        onChange={(e) => setNewMessage(e.target.value)}
+                                        placeholder={attachedFile ? "Add a message (optional)..." : "Type your message..."}
+                                        className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-900 dark:text-white transition-shadow"
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={(!newMessage.trim() && !attachedFile) || isSending}
+                                        className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 text-white p-3 rounded-xl transition-colors shadow-sm flex items-center justify-center"
+                                    >
+                                        {isSending ? (
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        ) : (
+                                            <Send className="w-5 h-5" />
+                                        )}
+                                    </button>
+                                </div>
                             </form>
                         ) : (
                             <div className="text-center py-3 px-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-slate-500 dark:text-slate-400 text-sm font-medium border border-slate-200 dark:border-slate-800">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Briefcase, FileText, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { DOMAINS } from '../../constants';
-import { useProfanityFilter } from '../../hooks/useProfanityFilter';
+import { checkFormForProfanityAsync } from '../../utils/profanityFilter';
 
 interface PostProjectModalProps {
     isOpen: boolean;
@@ -47,7 +47,7 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
         }
     }, [editingProject, isOpen]);
 
-    const { containsProfanity } = useProfanityFilter();
+
 
     if (!isOpen) return null;
 
@@ -65,7 +65,7 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
@@ -78,17 +78,19 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
         }
 
         // Profanity Check
-        if (
-            containsProfanity(formData.role) ||
-            containsProfanity(finalDomain) ||
-            containsProfanity(formData.objective) ||
-            containsProfanity(formData.expectations)
-        ) {
-            setError('Please use professional language. Unprofessional or inappropriate terms are strictly prohibited.');
-            return; // Prevent submission if there's an active profanity error
-        }
-
         setIsSubmitting(true);
+        const profanityField = await checkFormForProfanityAsync({
+            role: formData.role,
+            domain: finalDomain,
+            objective: formData.objective,
+            expectations: formData.expectations
+        });
+
+        if (profanityField) {
+            setError('Please use professional language. Unprofessional or inappropriate terms are strictly prohibited.');
+            setIsSubmitting(false);
+            return;
+        }
 
         // Simulate API call
         setTimeout(() => {

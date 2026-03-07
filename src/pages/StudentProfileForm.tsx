@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Briefcase, Building2, BookOpen, UploadCloud, CheckCircle2, Image as ImageIcon, FileText, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import confetti from 'canvas-confetti';
-import { checkFormForProfanity } from '../utils/profanityFilter';
+import { checkFormForProfanityAsync } from '../utils/profanityFilter';
 
 const DOMAINS = [
     'Software Engineering',
@@ -33,7 +33,7 @@ const StudentProfileForm = () => {
     const navigate = useNavigate();
     const { userName, updateUserPhoto, completeProfile } = useAuth();
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
@@ -42,13 +42,14 @@ const StudentProfileForm = () => {
             return;
         }
 
-        const profanityField = checkFormForProfanity({ college, domain });
+        setIsLoading(true);
+
+        const profanityField = await checkFormForProfanityAsync({ college, domain });
         if (profanityField) {
             setError('Please remove inappropriate language before continuing.');
+            setIsLoading(false);
             return;
         }
-
-        setIsLoading(true);
 
         // Simulate API call to save profile
         setTimeout(() => {

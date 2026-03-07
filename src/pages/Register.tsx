@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Briefcase, Mail, Lock, User, AlertCircle, Globe } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { checkFormForProfanity } from '../utils/profanityFilter';
+import { checkFormForProfanityAsync } from '../utils/profanityFilter';
 
 const Register = () => {
     const [name, setName] = useState('');
@@ -26,7 +26,7 @@ const Register = () => {
 
         try {
             // Check for profanity in the text fields
-            const profanityField = checkFormForProfanity({ name, companyName });
+            const profanityField = await checkFormForProfanityAsync({ name, companyName });
             if (profanityField) {
                 setError('Please remove inappropriate language before continuing.');
                 setIsLoading(false);

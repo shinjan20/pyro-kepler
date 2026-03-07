@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { MapPin, Star, Mail, X, AlertTriangle, Send, CheckCircle2, MessageSquarePlus, StarHalf } from 'lucide-react';
-import { useProfanityFilter } from '../../hooks/useProfanityFilter';
+import { checkTextForProfanityAsync } from '../../utils/profanityFilter';
 
 interface CollaboratedTalent {
     id: string | number;
@@ -14,14 +14,15 @@ interface CollaboratedTalent {
 
 interface CollaboratedTalentCardProps {
     collab: CollaboratedTalent;
+    onMessageInitiated?: (projectId: string, candidateId: string, message: string) => void;
 }
 
-const CollaboratedTalentCard = ({ collab }: CollaboratedTalentCardProps) => {
+const CollaboratedTalentCard = ({ collab, onMessageInitiated }: CollaboratedTalentCardProps) => {
     const [isMessaging, setIsMessaging] = useState(false);
     const [messageText, setMessageText] = useState('');
     const [messageSent, setMessageSent] = useState(false);
     const [error, setError] = useState('');
-    const { containsProfanity } = useProfanityFilter();
+    const [isSending, setIsSending] = useState(false);
 
     // Feedback State
     const [isAddingFeedback, setIsAddingFeedback] = useState(collab.rating === 0 || !collab.review);
@@ -31,19 +32,29 @@ const CollaboratedTalentCard = ({ collab }: CollaboratedTalentCardProps) => {
     const [feedbackSaved, setFeedbackSaved] = useState(false);
 
     const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const value = e.target.value;
-        if (containsProfanity(value)) {
-            setError('Please use professional language. Unprofessional or inappropriate terms are strictly prohibited.');
-        } else {
-            setError('');
-        }
-        setMessageText(value);
+        setError('');
+        setMessageText(e.target.value);
     };
 
-    const handleSendMessage = () => {
+    const handleSendMessage = async () => {
         if (!messageText.trim() || error) return;
+
+        setIsSending(true);
+        const hasProfanity = await checkTextForProfanityAsync(messageText);
+
+        if (hasProfanity) {
+            setError('Please use professional language. Unprofessional or inappropriate terms are strictly prohibited.');
+            setIsSending(false);
+            return;
+        }
+
         // Simulate sending a message
+        if (onMessageInitiated) {
+            onMessageInitiated('collab-project', String(collab.id), messageText);
+        }
+
         setMessageSent(true);
+        setIsSending(false);
         setTimeout(() => {
             setIsMessaging(false);
             setMessageSent(false);
@@ -235,10 +246,17 @@ const CollaboratedTalentCard = ({ collab }: CollaboratedTalentCardProps) => {
                                 <div className="flex justify-end">
                                     <button
                                         onClick={handleSendMessage}
-                                        disabled={!messageText.trim() || !!error}
-                                        className="px-4 py-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 text-white font-medium rounded-lg text-sm transition-colors flex items-center gap-2"
+                                        disabled={!messageText.trim() || !!error || isSending}
+                                        className="px-4 py-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 text-white font-medium rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
                                     >
-                                        <Send className="w-3.5 h-3.5" /> Send
+                                        {isSending ? (
+                                            <>
+                                                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                Sending...
+                                            </>
+                                        ) : (
+                                            <><Send className="w-3.5 h-3.5" /> Send</>
+                                        )}
                                     </button>
                                 </div>
                             </>

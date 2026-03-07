@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, Send, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import { MOCK_PROJECTS } from '../../constants';
-import { checkFormForProfanity } from '../../utils/profanityFilter';
+import { checkFormForProfanityAsync } from '../../utils/profanityFilter';
 
 interface ApplicationModalProps {
     isOpen: boolean;
@@ -23,7 +23,7 @@ export default function ApplicationModal({ isOpen, onClose, projectId, onSubmitS
 
     if (!project) return null;
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
@@ -32,13 +32,14 @@ export default function ApplicationModal({ isOpen, onClose, projectId, onSubmitS
             return;
         }
 
-        const profanityField = checkFormForProfanity({ coverLetter });
+        setIsSubmitting(true);
+
+        const profanityField = await checkFormForProfanityAsync({ coverLetter });
         if (profanityField) {
             setError('Please remove inappropriate language from your application.');
+            setIsSubmitting(false);
             return;
         }
-
-        setIsSubmitting(true);
 
         // Simulate API Application
         setTimeout(() => {

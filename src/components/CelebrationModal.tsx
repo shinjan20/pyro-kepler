@@ -9,11 +9,14 @@ interface CelebrationModalProps {
     message: string;
     primaryActionText?: string;
     onPrimaryAction?: () => void;
+    children?: React.ReactNode;
+    hideConfetti?: boolean;
+    icon?: React.ReactNode;
 }
 
-export default function CelebrationModal({ isOpen, onClose, title, message, primaryActionText, onPrimaryAction }: CelebrationModalProps) {
+export default function CelebrationModal({ isOpen, onClose, title, message, primaryActionText, onPrimaryAction, children, hideConfetti, icon }: CelebrationModalProps) {
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && !hideConfetti) {
             const duration = 3 * 1000;
             const animationEnd = Date.now() + duration;
             const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 1000 };
@@ -57,8 +60,8 @@ export default function CelebrationModal({ isOpen, onClose, title, message, prim
 
                 <div className="w-24 h-24 mx-auto mb-6 relative">
                     <div className="absolute inset-0 bg-brand-500/20 blur-xl rounded-full animate-pulse"></div>
-                    <div className="w-full h-full bg-gradient-to-br from-brand-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-brand-500/30 relative z-10">
-                        <PartyPopper className="w-12 h-12 text-white" />
+                    <div className="w-full h-full bg-gradient-to-br from-brand-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-brand-500/30 relative z-10 text-white">
+                        {icon || <PartyPopper className="w-12 h-12" />}
                     </div>
                 </div>
 
@@ -69,6 +72,8 @@ export default function CelebrationModal({ isOpen, onClose, title, message, prim
                 <p className="text-slate-600 dark:text-slate-300 mb-8 text-lg font-medium">
                     {message}
                 </p>
+
+                {children && <div className="mb-8 text-left">{children}</div>}
 
                 <div className={`flex gap-3 ${primaryActionText ? 'flex-col sm:flex-row' : ''}`}>
                     <button

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Briefcase, Mail, Globe, Save, Lock, Building2, BookOpen, Link as LinkIcon, AlertCircle } from 'lucide-react';
-import { checkFormForProfanity } from '../utils/profanityFilter';
+import { checkFormForProfanityAsync } from '../utils/profanityFilter';
 
 // DOMAINS reference duplicated from the profile form logic
 const DOMAINS = [
@@ -35,7 +35,7 @@ const Settings = () => {
     const [successMessage, setSuccessMessage] = useState('');
     const [error, setError] = useState('');
 
-    const handleSaveProfile = (e: React.FormEvent) => {
+    const handleSaveProfile = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setSuccessMessage('');
@@ -59,14 +59,14 @@ const Settings = () => {
         }
 
         // Profanity Check
+        setIsSaving(true);
         const fieldsToCheck = { name, companyName, college };
-        const profanityField = checkFormForProfanity(fieldsToCheck);
+        const profanityField = await checkFormForProfanityAsync(fieldsToCheck);
         if (profanityField) {
             setError('Please remove inappropriate language before saving.');
+            setIsSaving(false);
             return;
         }
-
-        setIsSaving(true);
 
         // Simulate API save
         setTimeout(() => {

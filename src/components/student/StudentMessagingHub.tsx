@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Send, Clock, MessageSquare, Briefcase, ChevronLeft, AlertCircle } from 'lucide-react';
-import { useProfanityFilter } from '../../hooks/useProfanityFilter';
+import { useState, useRef } from 'react';
+import { Send, Clock, MessageSquare, Briefcase, ChevronLeft, AlertCircle, Paperclip, FileText, X } from 'lucide-react';
+import { checkTextForProfanityAsync } from '../../utils/profanityFilter';
 
 interface StudentMessagingHubProps {
     threads: any[];
@@ -11,21 +11,26 @@ const StudentMessagingHub = ({ threads, setThreads }: StudentMessagingHubProps) 
     const [activeThreadId, setActiveThreadId] = useState<string | null>(threads[0]?.id || null);
     const [newMessage, setNewMessage] = useState('');
     const [showMobileChat, setShowMobileChat] = useState(false);
+    const [attachedFile, setAttachedFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const { containsProfanity } = useProfanityFilter();
-
+    const [isSending, setIsSending] = useState(false);
     const activeThread = threads.find(t => t.id === activeThreadId);
 
     const [errorMessage, setErrorMessage] = useState('');
 
-    const handleSendMessage = (e: React.FormEvent) => {
+    const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         setErrorMessage('');
 
-        if (!newMessage.trim() || !activeThreadId) return;
+        if ((!newMessage.trim() && !attachedFile) || !activeThreadId) return;
 
-        if (containsProfanity(newMessage)) {
+        setIsSending(true);
+        const hasProfanity = await checkTextForProfanityAsync(newMessage);
+
+        if (hasProfanity) {
             setErrorMessage('Please use professional language. Unprofessional or inappropriate terms are strictly prohibited.');
+            setIsSending(false);
             return;
         }
 
@@ -39,7 +44,8 @@ const StudentMessagingHub = ({ threads, setThreads }: StudentMessagingHubProps) 
                             id: Date.now().toString(),
                             senderId: 'student',
                             text: newMessage,
-                            timestamp: new Date().toISOString()
+                            timestamp: new Date().toISOString(),
+                            attachedFileName: attachedFile?.name || null
                         }
                     ]
                 };
@@ -47,6 +53,14 @@ const StudentMessagingHub = ({ threads, setThreads }: StudentMessagingHubProps) 
             return thread;
         }));
         setNewMessage('');
+        setAttachedFile(null);
+        setIsSending(false);
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            setAttachedFile(e.target.files[0]);
+        }
     };
 
     const formatDate = (dateString: string) => {
@@ -145,7 +159,13 @@ const StudentMessagingHub = ({ threads, setThreads }: StudentMessagingHubProps) 
                                         ? 'bg-brand-600 text-white rounded-tr-none'
                                         : 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white rounded-tl-none outline outline-1 outline-slate-300 dark:outline-slate-600'
                                         }`}>
-                                        <p className="text-[15px] leading-relaxed break-words">{msg.text}</p>
+                                        {msg.attachedFileName && (
+                                            <div className={`flex items-center gap-2 p-2 rounded-lg mb-2 text-sm max-w-full ${isStudent ? 'bg-white/20' : 'bg-white dark:bg-slate-800'}`}>
+                                                <FileText className="w-4 h-4 shrink-0" />
+                                                <span className="truncate font-medium">{msg.attachedFileName}</span>
+                                            </div>
+                                        )}
+                                        {msg.text && <p className="text-[15px] leading-relaxed break-words">{msg.text}</p>}
                                     </div>
                                     <span className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 flex items-center gap-1">
                                         <Clock className="w-3 h-3" /> {formatDate(msg.timestamp)} • {isStudent ? 'You' : 'Recruiter'}
@@ -164,21 +184,58 @@ const StudentMessagingHub = ({ threads, setThreads }: StudentMessagingHubProps) 
                             </div>
                         )}
                         {activeThread.messages.some((msg: any) => msg.senderId === 'recruiter') ? (
-                            <form onSubmit={handleSendMessage} className="flex gap-3">
-                                <input
-                                    type="text"
-                                    value={newMessage}
-                                    onChange={(e) => setNewMessage(e.target.value)}
-                                    placeholder="Type your reply..."
-                                    className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-900 dark:text-white transition-shadow"
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={!newMessage.trim()}
-                                    className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 text-white p-3 rounded-xl transition-colors shadow-sm flex items-center justify-center"
-                                >
-                                    <Send className="w-5 h-5" />
-                                </button>
+                            <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
+                                {attachedFile && (
+                                    <div className="flex items-center gap-2 p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm max-w-sm self-start mb-1 animation-in fade-in">
+                                        <FileText className="w-4 h-4 text-slate-500" />
+                                        <span className="truncate flex-1 text-slate-700 dark:text-slate-200 font-medium">
+                                            {attachedFile.name}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAttachedFile(null)}
+                                            className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
+                                <div className="flex gap-2 items-center">
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileChange}
+                                        className="hidden"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="p-3 text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                                        title="Attach file"
+                                    >
+                                        <Paperclip className="w-5 h-5" />
+                                    </button>
+
+                                    <input
+                                        type="text"
+                                        value={newMessage}
+                                        onChange={(e) => setNewMessage(e.target.value)}
+                                        placeholder={attachedFile ? "Add a message (optional)..." : "Type your reply..."}
+                                        className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-900 dark:text-white transition-shadow"
+                                    />
+
+                                    <button
+                                        type="submit"
+                                        disabled={(!newMessage.trim() && !attachedFile) || isSending}
+                                        className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 text-white p-3 rounded-xl transition-colors shadow-sm flex items-center justify-center"
+                                    >
+                                        {isSending ? (
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        ) : (
+                                            <Send className="w-5 h-5" />
+                                        )}
+                                    </button>
+                                </div>
                             </form>
                         ) : (
                             <div className="text-center py-4 px-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-slate-500 dark:text-slate-400 text-sm font-medium border border-slate-200 dark:border-slate-800">
@@ -186,7 +243,7 @@ const StudentMessagingHub = ({ threads, setThreads }: StudentMessagingHubProps) 
                             </div>
                         )}
                     </div>
-                </div>
+                </div >
             ) : (
                 <div className="flex-1 flex items-center justify-center bg-slate-50/50 dark:bg-[#0a0f1d]/50 hidden md:flex">
                     <div className="text-center text-slate-500">
@@ -195,7 +252,7 @@ const StudentMessagingHub = ({ threads, setThreads }: StudentMessagingHubProps) 
                     </div>
                 </div>
             )}
-        </div>
+        </div >
     );
 };
 

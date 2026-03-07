@@ -16,6 +16,7 @@ const MOCK_COLLEGES = Array.from(new Set(MOCK_PROFILES.map(p => p.college)));
 
 const RecruiterDashboard = () => {
     const [activeTab, setActiveTab] = useState<'projects' | 'talent' | 'collaborated' | 'messages'>('projects');
+    const [targetMessageThreadId, setTargetMessageThreadId] = useState<string | null>(null);
     const [activeProjects, setActiveProjects] = useState<any[]>(() => {
         const saved = localStorage.getItem('pyroActiveProjects');
         if (saved) return JSON.parse(saved);
@@ -125,6 +126,9 @@ const RecruiterDashboard = () => {
         message: string;
         primaryActionText?: string;
         onPrimaryAction?: () => void;
+        children?: React.ReactNode;
+        hideConfetti?: boolean;
+        icon?: React.ReactNode;
     }>({ title: '', message: '' });
 
     // Discover Talent Filters and Sort State
@@ -198,26 +202,62 @@ const RecruiterDashboard = () => {
             // Check if there are candidate to send letters to
             const hasCandidates = projectToArchive.workingCandidates && projectToArchive.workingCandidates.length > 0;
 
-            setCelebrationData({
-                title: 'Project Completed!',
-                message: `Congratulations on archiving "${projectToArchive.role}"! ${hasCandidates ? 'Would you like to send completion letters to the students who worked on this project?' : 'You have successfully moved this project to your archived list.'}`,
-                ...(hasCandidates ? {
-                    primaryActionText: 'Send Letters',
+            if (hasCandidates) {
+                setCelebrationData({
+                    title: 'Project Completed!',
+                    message: `Congratulations on archiving "${projectToArchive.role}"! You have candidates pending completion letters. Sending them now ensures a good experience.`,
+                    primaryActionText: 'Send Letters to All Candidates',
+                    children: (
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
+                            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center justify-between">
+                                Candidates to notify
+                                <span className="bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-400 py-0.5 px-2 rounded-full text-xs">
+                                    {projectToArchive.workingCandidates?.length}
+                                </span>
+                            </h4>
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                {projectToArchive.workingCandidates?.map((candidate: any) => (
+                                    <div key={candidate.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800 shadow-sm">
+                                        {candidate.photoUrl ? (
+                                            <img src={candidate.photoUrl} alt={candidate.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                                        ) : (
+                                            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 text-xs shrink-0">
+                                                {candidate.name.charAt(0)}
+                                            </div>
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                            <div className="text-sm font-bold text-slate-900 dark:text-white truncate">{candidate.name}</div>
+                                            <div className="text-[10px] text-slate-500 truncate">{candidate.domain}</div>
+                                        </div>
+                                        <div className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded">
+                                            <FileText className="w-3 h-3" /> Pending Letter
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ),
                     onPrimaryAction: () => {
                         // Create a message thread for each working candidate
                         projectToArchive.workingCandidates?.forEach((candidate: any) => {
                             handleSendLetter(projectToArchive.id, candidate.id, 'completion', `Congratulations on successfully completing the ${projectToArchive.role} project! Please find your completion letter attached.`);
                         });
                         setShowCelebration(false);
-                        setActiveTab('messages');
 
                         // Show alert
                         setTimeout(() => {
                             toast.success('Completion letters have been generated and sent to all associated candidates.');
                         }, 500);
                     }
-                } : {})
-            });
+                });
+            } else {
+                setCelebrationData({
+                    title: 'Project Archived',
+                    message: `Sorry you could not find any candidate for "${projectToArchive.role}" 😔, but you will find the right talent next time! 🌟`,
+                    hideConfetti: true,
+                    icon: <span className="text-5xl text-center mb-1 drop-shadow-md">😔</span>
+                });
+            }
             setShowCelebration(true);
         }
     };
@@ -247,11 +287,17 @@ const RecruiterDashboard = () => {
         }));
 
         // Create a new thread if it doesn't exist
+        let threadIdToOpen = null;
         setThreads(prev => {
             const exists = prev.find(t => t.projectId === projectId && t.candidateId === candidateId);
-            if (!exists && acceptedCandidate) {
+            if (exists) {
+                threadIdToOpen = exists.id;
+                return prev;
+            } else if (acceptedCandidate) {
+                const newId = Date.now().toString();
+                threadIdToOpen = newId;
                 const newThread = {
-                    id: Date.now().toString(),
+                    id: newId,
                     projectId,
                     candidateId,
                     status: 'active',
@@ -277,6 +323,7 @@ const RecruiterDashboard = () => {
             setShowCelebration(true);
         }
 
+        if (threadIdToOpen) setTargetMessageThreadId(threadIdToOpen);
         // Close modal and switch to messages tab
         setIsProjectDetailsModalOpen(false);
         setActiveTab('messages');
@@ -302,13 +349,22 @@ const RecruiterDashboard = () => {
 
     const handleMessageWorkingCandidate = (projectId: string, candidateId: string) => {
         // Ensure a thread exists for this candidate
+        let threadIdToOpen = null;
         setThreads(prev => {
-            const exists = prev.find(t => t.projectId === projectId && t.candidateId === candidateId);
-            if (!exists) {
+            const exists = prev.find(t => t.candidateId === candidateId);
+            if (exists) {
+                threadIdToOpen = exists.id;
+                // Update the project ID to the latest engagement context
+                return prev.map(t =>
+                    t.id === exists.id ? { ...t, projectId } : t
+                );
+            } else {
                 const candidate = activeProjects.find(p => p.id === projectId)?.workingCandidates?.find((c: any) => c.id === candidateId);
                 if (candidate) {
+                    const newId = Date.now().toString();
+                    threadIdToOpen = newId;
                     const newThread = {
-                        id: Date.now().toString(),
+                        id: newId,
                         projectId,
                         candidateId,
                         status: 'selected', // Status is selected because they are working
@@ -320,29 +376,35 @@ const RecruiterDashboard = () => {
             return prev;
         });
 
+        if (threadIdToOpen) setTargetMessageThreadId(threadIdToOpen);
         setIsProjectDetailsModalOpen(false);
         setActiveTab('messages');
     };
 
     const handleSendLetter = (projectId: string, candidateId: string, _type: 'joining' | 'completion' | 'discovery', content: string) => {
+        let newOrExistingThreadId: string | null = null;
         setThreads(prev => {
-            const existingThread = prev.find(t => t.projectId === projectId && t.candidateId === candidateId);
+            const existingThread = prev.find(t => t.candidateId === candidateId);
             const newMessage = {
                 id: Date.now().toString(),
                 senderId: 'recruiter',
                 text: content,
+                attachedFileName: _type === 'completion' ? 'Completion Letter.pdf' : undefined,
                 timestamp: new Date().toISOString()
             };
 
             if (existingThread) {
+                newOrExistingThreadId = existingThread.id;
                 return prev.map(t =>
                     t.id === existingThread.id
-                        ? { ...t, messages: [...t.messages, newMessage] }
+                        ? { ...t, projectId, messages: [...t.messages, newMessage] } // update thread context to new project
                         : t
                 );
             } else {
+                const newId = Date.now().toString();
+                newOrExistingThreadId = newId;
                 const newThread = {
-                    id: Date.now().toString(),
+                    id: newId,
                     projectId,
                     candidateId,
                     status: 'active',
@@ -354,6 +416,15 @@ const RecruiterDashboard = () => {
 
         if (_type === 'discovery') {
             toast.success('Your message has been sent to the candidate successfully!');
+            if (newOrExistingThreadId) {
+                setTargetMessageThreadId(newOrExistingThreadId);
+                setActiveTab('messages');
+            }
+        } else if (_type === 'completion') {
+            if (newOrExistingThreadId) {
+                setTargetMessageThreadId(newOrExistingThreadId);
+                setActiveTab('messages');
+            }
         }
     };
 
@@ -481,7 +552,10 @@ const RecruiterDashboard = () => {
                 {/* Navigation Tabs */}
                 <div className="flex space-x-2 sm:space-x-8 border-b border-slate-200 dark:border-slate-800 mb-8 overflow-x-auto no-scrollbar mask-edges min-w-full">
                     <button
-                        onClick={() => setActiveTab('projects')}
+                        onClick={() => {
+                            setTargetMessageThreadId(null);
+                            setActiveTab('projects');
+                        }}
                         className={`pb-4 px-2 sm:px-4 text-sm sm:text-base font-bold transition-all relative whitespace-nowrap shrink-0 flex items-center gap-2 ${activeTab === 'projects'
                             ? 'text-brand-600 dark:text-brand-400'
                             : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'
@@ -494,7 +568,10 @@ const RecruiterDashboard = () => {
                         )}
                     </button>
                     <button
-                        onClick={() => setActiveTab('talent')}
+                        onClick={() => {
+                            setTargetMessageThreadId(null);
+                            setActiveTab('talent');
+                        }}
                         className={`pb-4 px-2 sm:px-4 text-sm sm:text-base font-bold transition-all relative whitespace-nowrap shrink-0 flex items-center gap-2 ${activeTab === 'talent'
                             ? 'text-brand-600 dark:text-brand-400'
                             : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'
@@ -507,7 +584,10 @@ const RecruiterDashboard = () => {
                         )}
                     </button>
                     <button
-                        onClick={() => setActiveTab('collaborated')}
+                        onClick={() => {
+                            setTargetMessageThreadId(null);
+                            setActiveTab('collaborated');
+                        }}
                         className={`pb-4 px-2 sm:px-4 text-sm sm:text-base font-bold transition-all relative whitespace-nowrap shrink-0 flex items-center gap-2 ${activeTab === 'collaborated'
                             ? 'text-brand-600 dark:text-brand-400'
                             : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'
@@ -520,7 +600,9 @@ const RecruiterDashboard = () => {
                         )}
                     </button>
                     <button
-                        onClick={() => setActiveTab('messages')}
+                        onClick={() => {
+                            setActiveTab('messages');
+                        }}
                         className={`pb-4 px-2 sm:px-4 text-sm sm:text-base font-bold transition-all relative whitespace-nowrap shrink-0 flex items-center gap-2 ${activeTab === 'messages'
                             ? 'text-brand-600 dark:text-brand-400'
                             : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'
@@ -730,7 +812,11 @@ const RecruiterDashboard = () => {
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {MOCK_COLLABORATED_TALENT.map(collab => (
-                                    <CollaboratedTalentCard key={collab.id} collab={collab} />
+                                    <CollaboratedTalentCard
+                                        key={collab.id}
+                                        collab={collab}
+                                        onMessageInitiated={(projectId, candidateId, message) => handleSendLetter(projectId, candidateId, 'discovery', message)}
+                                    />
                                 ))}
                             </div>
                         </div>
@@ -743,6 +829,7 @@ const RecruiterDashboard = () => {
                                 threads={threads}
                                 setThreads={setThreads}
                                 onUpdateCandidateStatus={handleCandidateMessageStatusChange}
+                                initialActiveThreadId={targetMessageThreadId}
                             />
                         </div>
                     )}
@@ -802,7 +889,11 @@ const RecruiterDashboard = () => {
                 message={celebrationData.message}
                 primaryActionText={celebrationData.primaryActionText}
                 onPrimaryAction={celebrationData.onPrimaryAction}
-            />
+                hideConfetti={celebrationData.hideConfetti}
+                icon={celebrationData.icon}
+            >
+                {celebrationData.children}
+            </CelebrationModal>
         </div >
     );
 };

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Lock, Briefcase, GraduationCap, Mail, Github, Linkedin, User, Clock, Send, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { useProfanityFilter } from '../../hooks/useProfanityFilter';
+import { checkTextForProfanityAsync } from '../../utils/profanityFilter';
 import type { StudentProfile } from './StudentProfileCard';
 
 interface StudentProfileModalProps {
@@ -19,28 +19,33 @@ const StudentProfileModal = ({ isOpen, onClose, profile, hasActiveProjects, acti
     const [selectedProjectId, setSelectedProjectId] = useState('');
     const [messageSent, setMessageSent] = useState(false);
     const [error, setError] = useState('');
-    const { containsProfanity } = useProfanityFilter();
+    const [isSending, setIsSending] = useState(false);
 
     const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const value = e.target.value;
-        if (containsProfanity(value)) {
-            setError('Please use professional language. Unprofessional or inappropriate terms are strictly prohibited.');
-        } else {
-            setError('');
-        }
-        setMessageText(value);
+        setError('');
+        setMessageText(e.target.value);
     };
 
     if (!isOpen || !profile) return null;
 
-    const handleSendMessage = () => {
+    const handleSendMessage = async () => {
         if (!messageText.trim() || error || !selectedProjectId) return;
+
+        setIsSending(true);
+        const hasProfanity = await checkTextForProfanityAsync(messageText);
+
+        if (hasProfanity) {
+            setError('Please use professional language. Unprofessional or inappropriate terms are strictly prohibited.');
+            setIsSending(false);
+            return;
+        }
 
         if (onMessageInitiated && profile) {
             onMessageInitiated(selectedProjectId, profile.id, messageText);
         }
 
         setMessageSent(true);
+        setIsSending(false);
         setTimeout(() => {
             setIsMessaging(false);
             setMessageSent(false);
@@ -209,10 +214,17 @@ const StudentProfileModal = ({ isOpen, onClose, profile, hasActiveProjects, acti
                                                 <div className="flex justify-end">
                                                     <button
                                                         onClick={handleSendMessage}
-                                                        disabled={!messageText.trim() || !!error || !selectedProjectId}
-                                                        className="px-4 py-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 text-white font-medium rounded-lg text-sm transition-colors flex items-center gap-2"
+                                                        disabled={!messageText.trim() || !!error || !selectedProjectId || isSending}
+                                                        className="px-4 py-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 text-white font-medium rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
                                                     >
-                                                        <Send className="w-4 h-4" /> Send
+                                                        {isSending ? (
+                                                            <>
+                                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                                Sending...
+                                                            </>
+                                                        ) : (
+                                                            <><Send className="w-4 h-4" /> Send</>
+                                                        )}
                                                     </button>
                                                 </div>
                                             </>
