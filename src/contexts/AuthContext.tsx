@@ -103,7 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: `${window.location.origin}/auth/v1/callback`,
+                redirectTo: `${window.location.origin}`,
                 queryParams: {
                     access_type: 'offline',
                     prompt: 'consent',
@@ -117,6 +117,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             throw error;
         }
     };
+
+
 
     const logout = async () => {
         // Sign out of Supabase
