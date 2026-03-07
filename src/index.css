@@ -236,7 +236,6 @@
 /* Animated Border Utilities */
 .animated-border-badge {
   position: relative;
-  background: transparent;
   background-clip: padding-box;
   border: solid 1px transparent;
 }

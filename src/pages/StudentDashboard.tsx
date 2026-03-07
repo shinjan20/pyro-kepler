@@ -196,7 +196,7 @@ export default function StudentDashboard() {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                <div className="mb-10">
+                <div className="mb-10 text-center lg:text-left">
                     <h1 className="text-3xl md:text-5xl font-heading font-black tracking-tight text-slate-900 dark:text-white mb-2">
                         Student <span className="text-brand-500">Dashboard</span>
                     </h1>

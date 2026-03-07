@@ -444,46 +444,60 @@ const RecruiterDashboard = () => {
                     )}
                 </div>
 
-                {/* Tabs */}
-                <div className="mb-8 border-b border-slate-200 dark:border-slate-800">
-                    <nav className="-mb-px flex space-x-8">
-                        <button
-                            onClick={() => setActiveTab('projects')}
-                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'projects'
-                                ? 'border-brand-500 text-brand-600 dark:text-brand-400'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
-                                }`}
-                        >
-                            <Briefcase className="w-5 h-5" /> My Projects
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('talent')}
-                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'talent'
-                                ? 'border-brand-500 text-brand-600 dark:text-brand-400'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
-                                }`}
-                        >
-                            <Users className="w-5 h-5" /> Discover Talent
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('collaborated')}
-                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'collaborated'
-                                ? 'border-brand-500 text-brand-600 dark:text-brand-400'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
-                                }`}
-                        >
-                            <CheckCircle className="w-5 h-5" /> Collaborated Talent
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('messages')}
-                            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'messages'
-                                ? 'border-brand-500 text-brand-600 dark:text-brand-400'
-                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
-                                }`}
-                        >
-                            <MessageSquare className="w-5 h-5" /> Messages
-                        </button>
-                    </nav>
+                {/* Navigation Tabs */}
+                <div className="flex space-x-2 sm:space-x-8 border-b border-slate-200 dark:border-slate-800 mb-8 overflow-x-auto no-scrollbar mask-edges min-w-full">
+                    <button
+                        onClick={() => setActiveTab('projects')}
+                        className={`pb-4 px-2 sm:px-4 text-sm sm:text-base font-bold transition-all relative whitespace-nowrap shrink-0 flex items-center gap-2 ${activeTab === 'projects'
+                            ? 'text-brand-600 dark:text-brand-400'
+                            : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'
+                            }`}
+                    >
+                        <Briefcase className="w-4 h-4 sm:w-5 sm:h-5" />
+                        My Projects
+                        {activeTab === 'projects' && (
+                            <span className="absolute bottom-0 left-0 w-full h-1 bg-brand-600 dark:bg-brand-500 rounded-t-full animate-in fade-in zoom-in duration-300" />
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('talent')}
+                        className={`pb-4 px-2 sm:px-4 text-sm sm:text-base font-bold transition-all relative whitespace-nowrap shrink-0 flex items-center gap-2 ${activeTab === 'talent'
+                            ? 'text-brand-600 dark:text-brand-400'
+                            : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'
+                            }`}
+                    >
+                        <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+                        Discover Talent
+                        {activeTab === 'talent' && (
+                            <span className="absolute bottom-0 left-0 w-full h-1 bg-brand-600 dark:bg-brand-500 rounded-t-full animate-in fade-in zoom-in duration-300" />
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('collaborated')}
+                        className={`pb-4 px-2 sm:px-4 text-sm sm:text-base font-bold transition-all relative whitespace-nowrap shrink-0 flex items-center gap-2 ${activeTab === 'collaborated'
+                            ? 'text-brand-600 dark:text-brand-400'
+                            : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'
+                            }`}
+                    >
+                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                        Collaborated Talent
+                        {activeTab === 'collaborated' && (
+                            <span className="absolute bottom-0 left-0 w-full h-1 bg-brand-600 dark:bg-brand-500 rounded-t-full animate-in fade-in zoom-in duration-300" />
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('messages')}
+                        className={`pb-4 px-2 sm:px-4 text-sm sm:text-base font-bold transition-all relative whitespace-nowrap shrink-0 flex items-center gap-2 ${activeTab === 'messages'
+                            ? 'text-brand-600 dark:text-brand-400'
+                            : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'
+                            }`}
+                    >
+                        <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
+                        Messages
+                        {activeTab === 'messages' && (
+                            <span className="absolute bottom-0 left-0 w-full h-1 bg-brand-600 dark:bg-brand-500 rounded-t-full animate-in fade-in zoom-in duration-300" />
+                        )}
+                    </button>
                 </div>
 
                 <div className="mt-8">
@@ -700,7 +714,7 @@ const RecruiterDashboard = () => {
                     )}
                 </div>
 
-            </div>
+            </div >
 
             <PostProjectModal
                 isOpen={isPostProjectModalOpen}
@@ -755,7 +769,7 @@ const RecruiterDashboard = () => {
                 primaryActionText={celebrationData.primaryActionText}
                 onPrimaryAction={celebrationData.onPrimaryAction}
             />
-        </div>
+        </div >
     );
 };
 

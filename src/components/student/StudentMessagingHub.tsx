@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Send, Clock, MessageSquare, Briefcase } from 'lucide-react';
+import { Send, Clock, MessageSquare, Briefcase, ChevronLeft } from 'lucide-react';
 
 interface StudentMessagingHubProps {
     threads: any[];
@@ -9,6 +9,7 @@ interface StudentMessagingHubProps {
 const StudentMessagingHub = ({ threads, setThreads }: StudentMessagingHubProps) => {
     const [activeThreadId, setActiveThreadId] = useState<string | null>(threads[0]?.id || null);
     const [newMessage, setNewMessage] = useState('');
+    const [showMobileChat, setShowMobileChat] = useState(false);
 
     const activeThread = threads.find(t => t.id === activeThreadId);
 
@@ -52,10 +53,10 @@ const StudentMessagingHub = ({ threads, setThreads }: StudentMessagingHubProps) 
     }
 
     return (
-        <div className="flex h-[calc(100vh-16rem)] min-h-[500px] border border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900 shadow-xl overflow-hidden mt-4">
+        <div className="flex h-[calc(100vh-16rem)] min-h-[500px] border border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900 shadow-xl overflow-hidden mt-4 relative">
 
             {/* Left Pane: Thread List */}
-            <div className="w-full md:w-1/3 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+            <div className={`w-full md:w-1/3 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 ${showMobileChat ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                     <h2 className="font-bold font-heading text-lg text-slate-900 dark:text-white">Conversations</h2>
                 </div>
@@ -68,7 +69,10 @@ const StudentMessagingHub = ({ threads, setThreads }: StudentMessagingHubProps) 
                         return (
                             <button
                                 key={thread.id}
-                                onClick={() => setActiveThreadId(thread.id)}
+                                onClick={() => {
+                                    setActiveThreadId(thread.id);
+                                    setShowMobileChat(true);
+                                }}
                                 className={`w-full text-left p-4 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex gap-3 ${isActive ? 'bg-brand-50 dark:bg-brand-900/10 border-l-4 border-l-brand-500' : 'border-l-4 border-l-transparent'
                                     }`}
                             >
@@ -95,17 +99,25 @@ const StudentMessagingHub = ({ threads, setThreads }: StudentMessagingHubProps) 
 
             {/* Right Pane: Active Chat */}
             {activeThread ? (
-                <div className="flex-1 flex flex-col hidden md:flex">
+                <div className={`flex-1 flex flex-col absolute inset-0 md:relative z-10 bg-white dark:bg-slate-900 md:bg-transparent ${showMobileChat ? 'flex' : 'hidden md:flex'}`}>
                     {/* Chat Header */}
                     <div className="p-4 md:p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 shrink-0">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                        <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+                            <button
+                                onClick={() => setShowMobileChat(false)}
+                                className="md:hidden p-2 -ml-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 shrink-0"
+                            >
+                                <ChevronLeft className="w-6 h-6" />
+                            </button>
+                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 shrink-0">
                                 {activeThread.companyName?.charAt(0) || 'R'}
                             </div>
-                            <div>
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{activeThread.companyName || 'Recruiter'}</h3>
-                                <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-0.5">
-                                    <Briefcase className="w-3.5 h-3.5" /> Project: <span className="font-medium text-slate-700 dark:text-slate-300">{activeThread.projectName || 'Active Application'}</span>
+                            <div className="min-w-0 flex-1 flex flex-col justify-center">
+                                <h3 className="text-base md:text-lg font-bold text-slate-900 dark:text-white truncate">{activeThread.companyName || 'Recruiter'}</h3>
+                                <p className="text-xs md:text-sm text-slate-500 flex items-center gap-1 mt-0.5 w-full">
+                                    <Briefcase className="w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" />
+                                    <span className="shrink-0 hidden sm:inline">Project:</span>
+                                    <span className="font-medium text-slate-700 dark:text-slate-300 truncate">{activeThread.projectName || 'Active Application'}</span>
                                 </p>
                             </div>
                         </div>

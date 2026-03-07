@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Send, CheckCircle, XCircle, Search, Clock, MessageSquare, Briefcase } from 'lucide-react';
+import { Send, CheckCircle, XCircle, Search, Clock, MessageSquare, Briefcase, ChevronLeft } from 'lucide-react';
 import { MOCK_PROFILES } from '../../constants';
 
 interface MessagingHubProps {
@@ -16,6 +16,9 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'selected' | 'rejected'>('all');
     const [projectFilter, setProjectFilter] = useState<string>('all');
+
+    // For mobile view toggling between list and chat
+    const [showMobileChat, setShowMobileChat] = useState(false);
 
     const filteredThreads = threads.filter(thread => {
         const threadCandidate = MOCK_PROFILES.find(p => p.id === thread.candidateId);
@@ -81,10 +84,10 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
     }
 
     return (
-        <div className="flex h-[calc(100vh-12rem)] min-h-[600px] border border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900 shadow-xl overflow-hidden mt-4">
+        <div className="flex h-[calc(100vh-12rem)] min-h-[600px] border border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900 shadow-xl overflow-hidden mt-4 relative">
 
             {/* Left Pane: Thread List */}
-            <div className="w-full md:w-1/3 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+            <div className={`w-full md:w-1/3 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 ${showMobileChat ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-slate-200 dark:border-slate-800 space-y-3">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -130,7 +133,10 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
                         return (
                             <button
                                 key={thread.id}
-                                onClick={() => setActiveThreadId(thread.id)}
+                                onClick={() => {
+                                    setActiveThreadId(thread.id);
+                                    setShowMobileChat(true);
+                                }}
                                 className={`w-full text-left p-4 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex gap-3 ${isActive ? 'bg-brand-50 dark:bg-brand-900/10 border-l-4 border-l-brand-500' : 'border-l-4 border-l-transparent'
                                     }`}
                             >
@@ -172,29 +178,37 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
 
             {/* Right Pane: Active Chat */}
             {candidate && activeThread ? (
-                <div className="flex-1 flex flex-col hidden md:flex">
+                <div className={`flex-1 flex flex-col absolute inset-0 md:relative z-10 bg-white dark:bg-slate-900 md:bg-transparent ${showMobileChat ? 'flex' : 'hidden md:flex'}`}>
                     {/* Chat Header */}
                     <div className="p-4 md:p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 shrink-0">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+                            <button
+                                onClick={() => setShowMobileChat(false)}
+                                className="md:hidden p-2 -ml-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 shrink-0"
+                            >
+                                <ChevronLeft className="w-6 h-6" />
+                            </button>
                             {candidate.photoUrl ? (
-                                <img src={candidate.photoUrl} alt={candidate.name} className="w-12 h-12 rounded-full object-cover" />
+                                <img src={candidate.photoUrl} alt={candidate.name} className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover shrink-0" />
                             ) : (
-                                <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300">
+                                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 shrink-0">
                                     {candidate.name.charAt(0)}
                                 </div>
                             )}
-                            <div>
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{candidate.name}</h3>
+                            <div className="min-w-0 flex-1 flex flex-col justify-center">
+                                <h3 className="text-base md:text-lg font-bold text-slate-900 dark:text-white truncate">{candidate.name}</h3>
                                 {project && (
-                                    <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-0.5">
-                                        <Briefcase className="w-3.5 h-3.5" /> Applying for: <span className="font-medium text-slate-700 dark:text-slate-300">{project.role}</span>
+                                    <p className="text-xs md:text-sm text-slate-500 flex items-center gap-1 mt-0.5 w-full">
+                                        <Briefcase className="w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" />
+                                        <span className="shrink-0 hidden sm:inline">Applying for:</span>
+                                        <span className="font-medium text-slate-700 dark:text-slate-300 truncate">{project.role}</span>
                                     </p>
                                 )}
                             </div>
                         </div>
 
                         {/* Status / Actions */}
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 md:gap-3 shrink-0 ml-2">
                             {activeThread.status === 'selected' && (
                                 <span className="flex items-center gap-1.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-3 py-1.5 rounded-lg text-sm font-bold">
                                     <CheckCircle className="w-4 h-4" /> Selected
@@ -226,19 +240,19 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
                         </div>
                     </div>
 
-                    {/* Messages Area */}
-                    <div className="flex-1 p-6 overflow-y-auto bg-slate-50/50 dark:bg-[#0a0f1d]/50 space-y-6">
+                    {/* Messages Area - this div is where the issue was, but here I adjust content */}
+                    <div className="flex-1 p-4 md:p-6 overflow-y-auto bg-slate-50/50 dark:bg-[#0a0f1d]/50 space-y-6 flex flex-col">
                         {activeThread.messages.map((msg: any) => {
                             const isRecruiter = msg.senderId === 'recruiter';
                             return (
                                 <div key={msg.id} className={`flex flex-col ${isRecruiter ? 'items-end' : 'items-start'}`}>
-                                    <div className={`max-w-[75%] rounded-2xl p-4 shadow-sm ${isRecruiter
+                                    <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl p-3 md:p-4 shadow-sm ${isRecruiter
                                         ? 'bg-brand-600 text-white rounded-tr-none'
                                         : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-tl-none'
                                         }`}>
-                                        <p className="text-[15px] leading-relaxed break-words">{msg.text}</p>
+                                        <p className="text-[14px] md:text-[15px] leading-relaxed break-words">{msg.text}</p>
                                     </div>
-                                    <span className="text-xs text-slate-400 mt-1.5 flex items-center gap-1">
+                                    <span className="text-[10px] md:text-xs text-slate-400 mt-1.5 flex items-center gap-1">
                                         <Clock className="w-3 h-3" /> {formatDate(msg.timestamp)} • {isRecruiter ? 'You' : candidate.name.split(' ')[0]}
                                     </span>
                                 </div>

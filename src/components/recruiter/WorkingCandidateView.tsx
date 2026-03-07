@@ -48,31 +48,27 @@ const WorkingCandidateView = ({ candidate, onMessage, onSendLetter, onCompletePr
     return (
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden animate-in fade-in duration-300">
             {/* Header Area */}
-            <div className="bg-gradient-to-br from-brand-600 to-purple-700 p-8 text-white relative">
+            <div className="bg-gradient-to-br from-brand-600 to-purple-700 p-6 sm:p-8 text-white relative">
                 <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
                     <CheckCircle className="w-48 h-48" />
                 </div>
-                <div className="relative z-10 flex items-start gap-6">
+                <div className="relative z-10 flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
                     {candidate.photoUrl ? (
-                        <img src={candidate.photoUrl} alt={candidate.name} className="w-24 h-24 rounded-2xl object-cover border-4 border-white/20 shadow-xl bg-white" />
+                        <img src={candidate.photoUrl} alt={candidate.name} className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-4 border-white/20 shadow-xl bg-white shrink-0" />
                     ) : (
-                        <div className="w-24 h-24 rounded-2xl bg-white/20 border-4 border-white/20 shadow-xl flex items-center justify-center font-bold text-4xl text-white backdrop-blur-sm">
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white/20 border-4 border-white/20 shadow-xl flex items-center justify-center font-bold text-3xl sm:text-4xl text-white backdrop-blur-sm shrink-0">
                             {candidate.name.charAt(0)}
                         </div>
                     )}
-                    <div className="flex-1 pt-2">
-                        <div className="flex items-start justify-between">
-                            <div>
-                                <h2 className="text-3xl font-extrabold font-heading mb-2">{candidate.name}</h2>
-                                <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-white/80">
-                                    <span className="flex items-center gap-1.5"><Briefcase className="w-4 h-4" /> {candidate.domain}</span>
-                                    <span className="flex items-center gap-1.5"><GraduationCap className="w-4 h-4" /> {candidate.college}</span>
-                                </div>
-                            </div>
+                    <div className="flex-1 min-w-0 w-full pt-1 sm:pt-2">
+                        <h2 className="text-2xl sm:text-3xl font-extrabold font-heading mb-2 truncate">{candidate.name}</h2>
+                        <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 sm:gap-4 text-sm font-medium text-white/80">
+                            <span className="flex items-center gap-1.5 min-w-0"><Briefcase className="w-4 h-4 shrink-0" /> <span className="truncate">{candidate.domain}</span></span>
+                            <span className="flex items-center gap-1.5 min-w-0"><GraduationCap className="w-4 h-4 shrink-0" /> <span className="truncate">{candidate.college}</span></span>
                         </div>
-                        <div className="mt-4 flex flex-wrap gap-3">
-                            <span className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-sm font-bold border border-white/30">
-                                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                        <div className="mt-4 flex flex-row items-center gap-2 sm:gap-3 w-full overflow-x-auto pb-1 no-scrollbar mask-edges">
+                            <span className="inline-flex items-center justify-center gap-1.5 bg-white/20 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold border border-white/30 whitespace-nowrap shrink-0">
+                                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0"></span>
                                 Currently Working
                             </span>
                             <button
@@ -82,9 +78,9 @@ const WorkingCandidateView = ({ candidate, onMessage, onSendLetter, onCompletePr
                                         openLetterModal('completion');
                                     }
                                 }}
-                                className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-400 text-white px-4 py-1.5 rounded-full text-sm font-bold border border-brand-400/50 transition-colors cursor-pointer"
+                                className="inline-flex items-center justify-center gap-1.5 bg-brand-500 hover:bg-brand-400 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold border border-brand-400/50 transition-colors cursor-pointer whitespace-nowrap shrink-0"
                             >
-                                <CheckCircle className="w-4 h-4" /> Complete Project
+                                <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> Complete Project
                             </button>
                         </div>
                     </div>

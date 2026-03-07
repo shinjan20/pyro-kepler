@@ -280,6 +280,15 @@ export const MOCK_COLLABORATED_TALENT = [
         domain: 'Software Engineering',
         rating: 4.5,
         review: 'Very good understanding of Node.js. Needed some guidance on database architecture but learned fast.'
+    },
+    {
+        id: 'collab-4',
+        name: 'Aisha Patel',
+        photoUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop',
+        projectName: 'Product Management Intern',
+        domain: 'Product Management',
+        rating: 0,
+        review: ''
     }
 ];
 

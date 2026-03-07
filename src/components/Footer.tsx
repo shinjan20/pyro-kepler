@@ -7,7 +7,7 @@ const Footer = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
                     {/* Brand */}
-                    <div className="md:col-span-1">
+                    <div className="md:col-span-1 text-center md:text-left flex flex-col items-center md:items-start">
                         <div className="flex items-center gap-2 mb-4">
                             <div className="bg-brand-600 p-2 rounded-xl">
                                 <Briefcase className="w-5 h-5 text-white" />
@@ -16,10 +16,10 @@ const Footer = () => {
                                 ProjectMatch
                             </span>
                         </div>
-                        <p className="text-slate-500 dark:text-slate-400 mb-6">
+                        <p className="text-slate-500 dark:text-slate-400 mb-6 max-w-sm mx-auto md:mx-0">
                             Bridging the gap between academic learning and real-world industry experience for students worldwide.
                         </p>
-                        <div className="flex gap-4">
+                        <div className="flex gap-4 justify-center md:justify-start">
                             <a href="#" className="text-slate-400 hover:text-brand-500 transition-colors">
                                 <Twitter className="w-5 h-5" />
                             </a>
@@ -33,7 +33,7 @@ const Footer = () => {
                     </div>
 
                     {/* Links */}
-                    <div>
+                    <div className="text-center md:text-left">
                         <h4 className="font-heading font-semibold text-slate-900 dark:text-white mb-4">Students</h4>
                         <ul className="space-y-3">
                             <li><Link to="/projects" className="text-slate-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Find Projects</Link></li>
@@ -43,7 +43,7 @@ const Footer = () => {
                         </ul>
                     </div>
 
-                    <div>
+                    <div className="text-center md:text-left">
                         <h4 className="font-heading font-semibold text-slate-900 dark:text-white mb-4">Companies</h4>
                         <ul className="space-y-3">
                             <li><a href="#" className="text-slate-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Post a Project</a></li>
@@ -53,7 +53,7 @@ const Footer = () => {
                         </ul>
                     </div>
 
-                    <div>
+                    <div className="text-center md:text-left">
                         <h4 className="font-heading font-semibold text-slate-900 dark:text-white mb-4">Legal</h4>
                         <ul className="space-y-3">
                             <li><a href="#" className="text-slate-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Privacy Policy</a></li>

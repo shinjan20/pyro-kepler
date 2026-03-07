@@ -6,6 +6,8 @@ import { useAuth } from '../contexts/AuthContext';
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
+    const [isVisible, setIsVisible] = useState(true);
+    const [lastScrollY, setLastScrollY] = useState(0);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showStatusMenu, setShowStatusMenu] = useState(false);
     const { userRole, userName, userPhoto, isAuthenticated, logout } = useAuth();
@@ -50,14 +52,31 @@ const Navbar = () => {
 
     useEffect(() => {
         const handleScroll = () => {
-            setIsScrolled(window.scrollY > 20);
+            const currentScrollY = window.scrollY;
+
+            // Handle background styling
+            setIsScrolled(currentScrollY > 20);
+
+            // Handle hide/show based on scroll direction
+            if (currentScrollY > lastScrollY && currentScrollY > 100) {
+                // Scrolling down past 100px - hide navbar
+                setIsVisible(false);
+                // Also close mobile menu if it's open
+                if (isOpen) setIsOpen(false);
+            } else {
+                // Scrolling up - show navbar
+                setIsVisible(true);
+            }
+
+            setLastScrollY(currentScrollY);
         };
-        window.addEventListener('scroll', handleScroll);
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+    }, [lastScrollY, isOpen]);
 
     return (
-        <nav className={`fixed w-full left-0 right-0 z-[100] transition-all duration-500 ${isScrolled ? 'top-6 px-4 md:px-8' : 'top-0 px-0'}`}>
+        <nav className={`fixed w-full left-0 right-0 z-[100] transition-all duration-500 ${isVisible ? 'translate-y-0' : '-translate-y-full'} ${isScrolled ? 'top-2 sm:top-6 px-4 md:px-8' : 'top-0 px-0'}`}>
             <div className={`mx-auto transition-all duration-700 ${isScrolled ? 'max-w-5xl glass rounded-full shadow-2xl shadow-brand-500/10 border border-white/40 dark:border-slate-700/60 px-4 md:px-6' : 'max-w-7xl bg-transparent border-transparent px-4 sm:px-6 lg:px-8'}`}>
                 <div className={`flex justify-between items-center transition-all duration-500 ${isScrolled ? 'h-16' : 'h-24 md:h-28'}`}>
                     <Link
