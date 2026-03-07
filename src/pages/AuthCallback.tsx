@@ -49,8 +49,8 @@ export default function AuthCallback() {
                 } else if (role === 'recruiter') {
                     navigate('/dashboard/recruiter');
                 } else {
-                    // Default to student dashboard, not projects
-                    navigate('/student-profile-setup');
+                    // Default to student dashboard
+                    navigate('/dashboard/student');
                 }
             }
         });

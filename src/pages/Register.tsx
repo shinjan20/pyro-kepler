@@ -11,12 +11,11 @@ const Register = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [step, setStep] = useState(1);
-    const [otp, setOtp] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { registerWithEmail, verifyOtp, loginWithGoogle } = useAuth();
+    const { registerWithEmail, loginWithGoogle } = useAuth();
 
     const isRecruiter = searchParams.get('type') === 'recruiter';
 
@@ -43,17 +42,11 @@ const Register = () => {
 
                 if (step === 1) {
                     await registerWithEmail(email, password, name, 'student');
-                    setStep(2); // Ask for OTP
+                    setStep(2); // Show confirmation message
                     setIsLoading(false);
                 } else if (step === 2) {
-                    if (!otp || otp.length !== 6) {
-                        setError('Please enter a valid 6-digit OTP.');
-                        setIsLoading(false);
-                        return;
-                    }
-                    await verifyOtp(email, otp, 'signup');
-                    setIsLoading(false);
-                    navigate('/student-profile-setup');
+                    // Return to login
+                    navigate('/login');
                 }
                 return;
             }
@@ -261,43 +254,16 @@ const Register = () => {
                         )}
 
                         {step === 2 && (
-                            <>
-                                {!isRecruiter ? (
-                                    <div>
-                                        <label htmlFor="otp" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
-                                            One-Time Password (OTP)
-                                        </label>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 ml-1">We've sent a 6-digit code to {email}</p>
-                                        <div className="relative group">
-                                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                                <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-brand-400 transition-colors" />
-                                            </div>
-                                            <input
-                                                id="otp"
-                                                name="otp"
-                                                type="text"
-                                                maxLength={6}
-                                                required
-                                                value={otp}
-                                                onChange={(e) => setOtp(e.target.value)}
-                                                className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-slate-950 transition-all input-interactive tracking-[0.5em] font-mono text-center"
-                                                placeholder="000000"
-                                            />
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-6">
-                                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-100 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400 mb-6 relative">
-                                            <div className="absolute inset-0 bg-brand-500/20 rounded-full animate-ping opacity-75"></div>
-                                            <Mail className="w-8 h-8 relative z-10" />
-                                        </div>
-                                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Check your email</h3>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 text-center leading-relaxed">
-                                            We've sent a confirmation link to <span className="font-semibold text-slate-900 dark:text-white">{email}</span>. Click the link to activate your Recruiter account.
-                                        </p>
-                                    </div>
-                                )}
-                            </>
+                            <div className="text-center py-6">
+                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-100 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400 mb-6 relative">
+                                    <div className="absolute inset-0 bg-brand-500/20 rounded-full animate-ping opacity-75"></div>
+                                    <Mail className="w-8 h-8 relative z-10" />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Check your email</h3>
+                                <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 text-center leading-relaxed">
+                                    We've sent a confirmation link to <span className="font-semibold text-slate-900 dark:text-white">{email}</span>. Click the link to activate your {isRecruiter ? 'Recruiter' : 'Student'} account.
+                                </p>
+                            </div>
                         )}
 
                         <div className="pt-2 flex flex-col gap-3">
@@ -318,13 +284,12 @@ const Register = () => {
                                             Processing...
                                         </>
                                     ) : (
-                                        !isRecruiter ? 'Create account' :
-                                            step === 1 ? 'Continue to Email Verification' :
-                                                step === 2 ? 'Return to Login' : 'Create account'
+                                        step === 1 ? 'Continue to Email Verification' :
+                                            step === 2 ? 'Return to Login' : 'Create account'
                                     )}
                                 </span>
                             </button>
-                            {isRecruiter && step > 1 && (
+                            {step > 1 && (
                                 <button
                                     type="button"
                                     onClick={() => setStep(step - 1)}
