@@ -33,7 +33,7 @@ const timeAgo = (dateInput?: string) => {
 };
 
 const Projects = () => {
-    const { isAuthenticated, userRole } = useAuth();
+    const { isAuthenticated, userRole, hasCompletedProfile } = useAuth();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const initialBookmarkFilter = searchParams.get('bookmarks') === 'true';
@@ -309,6 +309,10 @@ const Projects = () => {
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
+                                                            if (!hasCompletedProfile) {
+                                                                navigate('/dashboard/student');
+                                                                return;
+                                                            }
                                                             setApplyingProjectId(project.id);
                                                         }}
                                                         disabled={interviewStatus === 'closed'}
