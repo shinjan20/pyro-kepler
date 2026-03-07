@@ -48,19 +48,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const user = session.user;
                 const metadata = user.user_metadata;
 
-                // Get the intended role from localStorage that we saved right before kicking off OAuth
-                const pendingRole = localStorage.getItem('pendingAuthRole') as UserRole || 'student';
+                // Priority 1: Backend Metadata. Priority 2: Pending Role. Default: student
+                const pendingRole = localStorage.getItem('pendingAuthRole') as UserRole;
+                const finalRole = metadata?.role as UserRole || pendingRole || 'student';
 
                 const name = metadata.full_name || metadata.name || user.email?.split('@')[0] || 'User';
                 const photo = metadata.avatar_url || metadata.picture || null;
 
                 // Sync to our local storage system and states
-                localStorage.setItem('userRole', pendingRole);
+                localStorage.setItem('userRole', finalRole);
                 localStorage.setItem('userName', name);
                 if (photo) localStorage.setItem('userPhoto', photo);
                 localStorage.removeItem('pendingAuthRole'); // clean up
 
-                setUserRole(pendingRole);
+                setUserRole(finalRole);
                 setUserName(name);
                 setUserPhoto(photo);
                 setIsAuthenticated(true);
@@ -122,16 +123,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const loginWithEmail = async (email: string, password: string, role: UserRole) => {
+        // Let the onAuthStateChange handle setting the local state,
+        // but we'll store the intended role just in case metadata is missing it
+        // MUST BE SET BEFORE AWAITING SUPABASE
+        localStorage.setItem('pendingAuthRole', role || 'student');
+
         const { error } = await supabase.auth.signInWithPassword({
             email,
             password
         });
 
-        if (error) throw error;
-
-        // Let the onAuthStateChange handle setting the local state,
-        // but we'll store the intended role just in case metadata is missing it
-        localStorage.setItem('pendingAuthRole', role || 'student');
+        if (error) {
+            localStorage.removeItem('pendingAuthRole');
+            throw error;
+        }
     };
 
     const registerWithEmail = async (email: string, password: string, name: string, role: UserRole, companyData?: any) => {
@@ -146,6 +151,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             metadata.company_website = companyData.companyWebsite;
         }
 
+        // Save intended role for post-verification
+        localStorage.setItem('pendingAuthRole', role || 'student');
+
         const { error } = await supabase.auth.signUp({
             email,
             password,
@@ -154,14 +162,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         });
 
-        if (error) throw error;
+        if (error) {
+            localStorage.removeItem('pendingAuthRole');
+            throw error;
+        }
 
         // If auto-confirm is enabled or we don't need OTP, we would sign in here
         // Since we are using OTP, we won't set local state until OTP is verified 
         // OR until the onAuthStateChange picks it up.
-
-        // Save intended role for post-verification
-        localStorage.setItem('pendingAuthRole', role || 'student');
     };
 
     const verifyOtp = async (email: string, otp: string, type: 'signup' | 'magiclink' | 'recovery' = 'signup') => {

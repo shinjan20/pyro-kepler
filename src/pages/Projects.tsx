@@ -8,6 +8,7 @@ import ApplicationModal from '../components/student/ApplicationModal';
 import ProjectDetailsModal from '../components/student/ProjectDetailsModal';
 import AlertModal from '../components/AlertModal';
 import { useEffect } from 'react';
+import { useInterviewStatus } from '../hooks/useInterviewStatus';
 
 const timeAgo = (dateInput?: string) => {
     if (!dateInput) return 'Recently';
@@ -81,9 +82,7 @@ const Projects = () => {
         return [];
     });
 
-    const [interviewStatus] = useState<'ready' | 'open' | 'closed'>(() => {
-        return (localStorage.getItem('pyroInterviewStatus') as 'ready' | 'open' | 'closed') || 'ready';
-    });
+    const { interviewStatus } = useInterviewStatus();
 
     useEffect(() => {
         localStorage.setItem('pyroBookmarks', JSON.stringify(bookmarkedProjectIds));

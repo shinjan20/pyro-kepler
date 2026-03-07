@@ -1,6 +1,7 @@
 import { X, Clock, Banknote, Calendar, Home as HomeIcon, MapPin, Tag, Users, ShieldAlert, Zap, Send, Loader2, Check } from 'lucide-react';
 import { MOCK_PROJECTS } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
+import { useInterviewStatus } from '../../hooks/useInterviewStatus';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 
@@ -29,7 +30,7 @@ export default function ProjectDetailsModal({ isOpen, onClose, projectId, onAppl
     const project = MOCK_PROJECTS.find(p => p.id === projectId);
     if (!project) return null;
 
-    const interviewStatus = (localStorage.getItem('pyroInterviewStatus') as 'ready' | 'open' | 'closed') || 'ready';
+    const { interviewStatus } = useInterviewStatus();
 
     // Simulate metrics
     const applicantCount = Math.floor(Math.random() * 50) + 12;

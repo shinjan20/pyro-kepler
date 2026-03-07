@@ -2,6 +2,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Briefcase, Menu, X, LogOut, User as UserIcon, Settings as SettingsIcon, MoreHorizontal, Check, XCircle, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useInterviewStatus } from '../hooks/useInterviewStatus';
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -14,14 +15,7 @@ const Navbar = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Status State
-    const [interviewStatus, setInterviewStatus] = useState<'ready' | 'open' | 'closed'>(() => {
-        return (localStorage.getItem('pyroInterviewStatus') as 'ready' | 'open' | 'closed') || 'ready';
-    });
-
-    useEffect(() => {
-        localStorage.setItem('pyroInterviewStatus', interviewStatus);
-    }, [interviewStatus]);
+    const { interviewStatus, updateStatus: setInterviewStatus } = useInterviewStatus();
 
     const isActive = (path: string) => location.pathname === path;
 
@@ -45,9 +39,10 @@ const Navbar = () => {
     };
 
     const handleLogout = () => {
-        logout();
-        setShowProfileMenu(false);
-        navigate('/');
+        logout().then(() => {
+            setShowProfileMenu(false);
+            navigate('/', { replace: true });
+        });
     };
 
     useEffect(() => {
@@ -106,6 +101,9 @@ const Navbar = () => {
                                 <Link to="/dashboard/student" className={`${isActive('/dashboard/student') ? 'text-brand-600 dark:text-brand-400 font-bold' : 'text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 font-medium'} transition-colors`}>Dashboard</Link>
                                 <Link to="/projects" className={`${isActive('/projects') ? 'text-brand-600 dark:text-brand-400 font-bold' : 'text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 font-medium'} transition-colors`}>Find Projects</Link>
                             </>
+                        )}
+                        {isAuthenticated && userRole === 'recruiter' && (
+                            <Link to="/dashboard/recruiter" className={`${isActive('/dashboard/recruiter') ? 'text-brand-600 dark:text-brand-400 font-bold' : 'text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 font-medium'} transition-colors`}>Dashboard</Link>
                         )}
                         <div className="flex items-center gap-4">
                             {isAuthenticated && userRole === 'student' && (
@@ -262,6 +260,9 @@ const Navbar = () => {
                                 <Link to="/dashboard/student" onClick={() => setIsOpen(false)} className={`block px-3 py-3 rounded-lg text-base ${isActive('/dashboard/student') ? 'font-bold text-brand-600 bg-slate-50 dark:bg-slate-800/50' : 'font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Dashboard</Link>
                                 <Link to="/projects" onClick={() => setIsOpen(false)} className={`block px-3 py-3 rounded-lg text-base ${isActive('/projects') ? 'font-bold text-brand-600 bg-slate-50 dark:bg-slate-800/50' : 'font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Find Projects</Link>
                             </>
+                        )}
+                        {isAuthenticated && userRole === 'recruiter' && (
+                            <Link to="/dashboard/recruiter" onClick={() => setIsOpen(false)} className={`block px-3 py-3 rounded-lg text-base ${isActive('/dashboard/recruiter') ? 'font-bold text-brand-600 bg-slate-50 dark:bg-slate-800/50' : 'font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Dashboard</Link>
                         )}
 
                         <div className="pt-4 flex flex-col gap-3 px-3">
