@@ -54,12 +54,7 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-
-        if (containsProfanity(value)) {
-            setError('Please use professional language. Unprofessional or inappropriate terms are strictly prohibited.');
-        } else {
-            setError(''); // Clear error if typing is clean
-        }
+        setError(''); // Clear error on change
 
         setFormData(prev => ({ ...prev, [name]: value }));
     };
@@ -72,14 +67,28 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
 
-        if (error) {
+        const finalDomain = formData.domain === 'Other' ? formData.customDomain : formData.domain;
+
+        // Validation for empty fields
+        if (!formData.role || !finalDomain || !formData.objective || !formData.expectations || !formData.positions || !formData.tenure || !formData.remuneration) {
+            setError('Please fill in all required fields.');
+            return;
+        }
+
+        // Profanity Check
+        if (
+            containsProfanity(formData.role) ||
+            containsProfanity(finalDomain) ||
+            containsProfanity(formData.objective) ||
+            containsProfanity(formData.expectations)
+        ) {
+            setError('Please use professional language. Unprofessional or inappropriate terms are strictly prohibited.');
             return; // Prevent submission if there's an active profanity error
         }
 
         setIsSubmitting(true);
-
-        const finalDomain = formData.domain === 'Other' ? formData.customDomain : formData.domain;
 
         // Simulate API call
         setTimeout(() => {
@@ -144,7 +153,7 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                         </p>
                     </div>
                 ) : (
-                    <form onSubmit={handleSubmit} className="p-5 md:p-6 space-y-4 relative z-10">
+                    <form noValidate onSubmit={handleSubmit} className="p-5 md:p-6 space-y-4 relative z-10">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">

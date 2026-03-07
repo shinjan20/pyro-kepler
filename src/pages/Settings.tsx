@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Briefcase, Mail, Globe, Save, Lock, Building2, BookOpen, Link as LinkIcon } from 'lucide-react';
+import { User, Briefcase, Mail, Globe, Save, Lock, Building2, BookOpen, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import { checkFormForProfanity } from '../utils/profanityFilter';
 
 // DOMAINS reference duplicated from the profile form logic
 const DOMAINS = [
@@ -32,11 +33,40 @@ const Settings = () => {
 
     const [isSaving, setIsSaving] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
+    const [error, setError] = useState('');
 
     const handleSaveProfile = (e: React.FormEvent) => {
         e.preventDefault();
-        setIsSaving(true);
+        setError('');
         setSuccessMessage('');
+
+        // Basic Empty Field Validation
+        if (!name) {
+            setError('Full Name is required.');
+            return;
+        }
+
+        if (userRole === 'recruiter') {
+            if (!companyName || !companyWebsite) {
+                setError('Company details are required.');
+                return;
+            }
+        } else {
+            if (!college || !domain) {
+                setError('College and Domain are required.');
+                return;
+            }
+        }
+
+        // Profanity Check
+        const fieldsToCheck = { name, companyName, college };
+        const profanityField = checkFormForProfanity(fieldsToCheck);
+        if (profanityField) {
+            setError('Please remove inappropriate language before saving.');
+            return;
+        }
+
+        setIsSaving(true);
 
         // Simulate API save
         setTimeout(() => {
@@ -59,6 +89,19 @@ const Settings = () => {
 
     const handlePasswordChange = (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
+        setSuccessMessage('');
+
+        if (!currentPassword || !newPassword) {
+            setError('Please provide both current and new passwords.');
+            return;
+        }
+
+        if (newPassword.length < 8) {
+            setError('New password must be at least 8 characters long.');
+            return;
+        }
+
         // Mock password change logic here
         setCurrentPassword('');
         setNewPassword('');
@@ -81,6 +124,13 @@ const Settings = () => {
                     </div>
                 )}
 
+                {error && (
+                    <div className="mb-6 bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl flex items-start gap-3 text-sm animate-in fade-in slide-in-from-top-2">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                        <p>{error}</p>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                     {/* Main Profile Form */}
@@ -88,7 +138,7 @@ const Settings = () => {
                         <div className="glass-card p-6 md:p-8">
                             <h2 className="text-xl font-bold font-heading text-slate-900 dark:text-white mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">Personal Information</h2>
 
-                            <form onSubmit={handleSaveProfile} className="space-y-5">
+                            <form noValidate onSubmit={handleSaveProfile} className="space-y-5">
                                 <div>
                                     <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
                                     <div className="relative">

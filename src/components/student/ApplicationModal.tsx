@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Send, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import { MOCK_PROJECTS } from '../../constants';
+import { checkFormForProfanity } from '../../utils/profanityFilter';
 
 interface ApplicationModalProps {
     isOpen: boolean;
@@ -18,17 +19,31 @@ export default function ApplicationModal({ isOpen, onClose, projectId, onSubmitS
     const [portfolioUrl, setPortfolioUrl] = useState('');
     const [availability, setAvailability] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState('');
 
     if (!project) return null;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
+
+        if (!coverLetter || !availability) {
+            setError('Please fill out all required fields.');
+            return;
+        }
+
+        const profanityField = checkFormForProfanity({ coverLetter });
+        if (profanityField) {
+            setError('Please remove inappropriate language from your application.');
+            return;
+        }
+
         setIsSubmitting(true);
 
         // Simulate API Application
         setTimeout(() => {
             setIsSubmitting(false);
-            
+
             // Save application to localStorage
             const existingApps = JSON.parse(localStorage.getItem('pyroApplications') || '[]');
             const newApp = {
@@ -40,7 +55,7 @@ export default function ApplicationModal({ isOpen, onClose, projectId, onSubmitS
                 appliedAt: new Date().toISOString()
             };
             localStorage.setItem('pyroApplications', JSON.stringify([...existingApps, newApp]));
-            
+
             onSubmitSuccess();
         }, 1500);
     };
@@ -74,7 +89,7 @@ export default function ApplicationModal({ isOpen, onClose, projectId, onSubmitS
                 </div>
 
                 {/* Body Form */}
-                <form onSubmit={handleSubmit}>
+                <form noValidate onSubmit={handleSubmit}>
                     <div className="p-6 max-h-[70vh] overflow-y-auto hide-scrollbar space-y-6">
 
                         <div className="bg-brand-50 dark:bg-brand-500/10 border border-brand-100 dark:border-brand-500/20 rounded-xl p-4 flex items-start gap-3">
@@ -84,6 +99,13 @@ export default function ApplicationModal({ isOpen, onClose, projectId, onSubmitS
                                 Make sure your availability aligns before submitting.
                             </p>
                         </div>
+
+                        {error && (
+                            <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl flex items-start gap-3 text-sm animate-in fade-in zoom-in duration-300">
+                                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                                <p>{error}</p>
+                            </div>
+                        )}
 
                         <div>
                             <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">

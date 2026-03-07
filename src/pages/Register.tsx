@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Briefcase, Mail, Lock, User, AlertCircle, Globe } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { checkFormForProfanity } from '../utils/profanityFilter';
 
 const Register = () => {
     const [name, setName] = useState('');
@@ -15,33 +16,52 @@ const Register = () => {
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { login } = useAuth();
+    const { registerWithEmail, verifyOtp, loginWithGoogle } = useAuth();
 
     const isRecruiter = searchParams.get('type') === 'recruiter';
 
-    const handleEmailRegister = (e: React.FormEvent) => {
+    const handleEmailRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setIsLoading(true);
 
-        setTimeout(() => {
+        try {
+            // Check for profanity in the text fields
+            const profanityField = checkFormForProfanity({ name, companyName });
+            if (profanityField) {
+                setError('Please remove inappropriate language before continuing.');
+                setIsLoading(false);
+                return;
+            }
+
             if (!isRecruiter) {
                 if (!name || !email || !password) {
                     setError('Please fill out all fields.');
                     setIsLoading(false);
                     return;
                 }
-                setIsLoading(false);
-                login('student');
-                // Force profile setup flow on new registration
-                navigate('/student-profile-setup');
+
+                if (step === 1) {
+                    await registerWithEmail(email, password, name, 'student');
+                    setStep(2); // Ask for OTP
+                    setIsLoading(false);
+                } else if (step === 2) {
+                    if (!otp || otp.length !== 6) {
+                        setError('Please enter a valid 6-digit OTP.');
+                        setIsLoading(false);
+                        return;
+                    }
+                    await verifyOtp(email, otp, 'signup');
+                    setIsLoading(false);
+                    navigate('/student-profile-setup');
+                }
                 return;
             }
 
             // Recruiter flow
             if (step === 1) {
-                if (!name || !email || !companyName || !companyWebsite) {
-                    setError('Please fill out all fields.');
+                if (!name || !email || !companyName || !companyWebsite || !password) {
+                    setError('Please fill out all fields including password.');
                     setIsLoading(false);
                     return;
                 }
@@ -52,39 +72,38 @@ const Register = () => {
                     setIsLoading(false);
                     return;
                 }
+
+                await registerWithEmail(email, password, name, 'recruiter', { companyName, companyWebsite });
                 setStep(2);
                 setIsLoading(false);
             } else if (step === 2) {
-                if (!otp || otp.length < 6) {
+                if (!otp || otp.length !== 6) {
                     setError('Please enter a valid 6-digit OTP.');
                     setIsLoading(false);
                     return;
                 }
-                // Mock OTP verification success
-                setStep(3);
+
+                await verifyOtp(email, otp, 'signup');
                 setIsLoading(false);
-            } else if (step === 3) {
-                if (!password || password.length < 8) {
-                    setError('Password must be at least 8 characters long.');
-                    setIsLoading(false);
-                    return;
-                }
-                setIsLoading(false);
-                login('recruiter', name);
                 navigate('/dashboard/recruiter', { state: { isNewRecruiter: true } });
             }
-        }, 1000);
+        } catch (err: any) {
+            console.error('Registration error:', err);
+            setError(err.message || 'An error occurred during registration.');
+            setIsLoading(false);
+        }
     };
 
-    const handleGoogleRegister = () => {
+    const handleGoogleRegister = async () => {
         setIsLoading(true);
-        // Simulate Google OAuth redirect
-        setTimeout(() => {
+        try {
+            await loginWithGoogle(isRecruiter ? 'recruiter' : 'student');
+            // Redirection happens via AuthCallback.tsx
+        } catch (err: any) {
+            console.error('Google Auth Error:', err);
+            setError(err.message || 'Failed to initialize Google Login.');
             setIsLoading(false);
-            login('student');
-            // Force profile setup flow on registration
-            navigate('/student-profile-setup');
-        }, 1000);
+        }
     };
 
     return (
@@ -129,7 +148,7 @@ const Register = () => {
                         </div>
                     )}
 
-                    <form className="space-y-5 relative z-10" onSubmit={handleEmailRegister}>
+                    <form noValidate className="space-y-5 relative z-10" onSubmit={handleEmailRegister}>
                         {(!isRecruiter || step === 1) && (
                             <>
                                 <div>
@@ -220,10 +239,35 @@ const Register = () => {
                                         />
                                     </div>
                                 </div>
+
+                                <div>
+                                    <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
+                                        Password
+                                    </label>
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-brand-400 transition-colors" />
+                                        </div>
+                                        <input
+                                            id="password"
+                                            name="password"
+                                            type="password"
+                                            autoComplete="new-password"
+                                            required
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-slate-950 transition-all input-interactive"
+                                            placeholder="••••••••"
+                                        />
+                                    </div>
+                                    <p className="mt-2 text-xs text-slate-500 ml-1">
+                                        Must be at least 8 characters long
+                                    </p>
+                                </div>
                             </>
                         )}
 
-                        {isRecruiter && step === 2 && (
+                        {step === 2 && (
                             <div>
                                 <label htmlFor="otp" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
                                     One-Time Password (OTP)
@@ -245,33 +289,6 @@ const Register = () => {
                                         placeholder="000000"
                                     />
                                 </div>
-                            </div>
-                        )}
-
-                        {(!isRecruiter || step === 3) && (
-                            <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 ml-1">
-                                    Password
-                                </label>
-                                <div className="relative group">
-                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                        <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-brand-400 transition-colors" />
-                                    </div>
-                                    <input
-                                        id="password"
-                                        name="password"
-                                        type="password"
-                                        autoComplete="new-password"
-                                        required
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white dark:focus:bg-slate-950 transition-all input-interactive"
-                                        placeholder="••••••••"
-                                    />
-                                </div>
-                                <p className="mt-2 text-xs text-slate-500 ml-1">
-                                    Must be at least 8 characters long
-                                </p>
                             </div>
                         )}
 

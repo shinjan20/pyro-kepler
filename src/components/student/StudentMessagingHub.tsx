@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Send, Clock, MessageSquare, Briefcase, ChevronLeft } from 'lucide-react';
+import { Send, Clock, MessageSquare, Briefcase, ChevronLeft, AlertCircle } from 'lucide-react';
+import { useProfanityFilter } from '../../hooks/useProfanityFilter';
 
 interface StudentMessagingHubProps {
     threads: any[];
@@ -11,11 +12,22 @@ const StudentMessagingHub = ({ threads, setThreads }: StudentMessagingHubProps) 
     const [newMessage, setNewMessage] = useState('');
     const [showMobileChat, setShowMobileChat] = useState(false);
 
+    const { containsProfanity } = useProfanityFilter();
+
     const activeThread = threads.find(t => t.id === activeThreadId);
+
+    const [errorMessage, setErrorMessage] = useState('');
 
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
+        setErrorMessage('');
+
         if (!newMessage.trim() || !activeThreadId) return;
+
+        if (containsProfanity(newMessage)) {
+            setErrorMessage('Please use professional language. Unprofessional or inappropriate terms are strictly prohibited.');
+            return;
+        }
 
         setThreads(prev => prev.map(thread => {
             if (thread.id === activeThreadId) {
@@ -145,6 +157,12 @@ const StudentMessagingHub = ({ threads, setThreads }: StudentMessagingHubProps) 
 
                     {/* Input Area */}
                     <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
+                        {errorMessage && (
+                            <div className="mb-3 bg-red-500/10 border border-red-500/30 text-red-500 p-3 rounded-xl flex items-start gap-2 text-sm animate-in fade-in slide-in-from-bottom-2">
+                                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                <p>{errorMessage}</p>
+                            </div>
+                        )}
                         {activeThread.messages.some((msg: any) => msg.senderId === 'recruiter') ? (
                             <form onSubmit={handleSendMessage} className="flex gap-3">
                                 <input

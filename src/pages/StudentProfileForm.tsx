@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, Building2, BookOpen, UploadCloud, CheckCircle2, Image as ImageIcon, FileText } from 'lucide-react';
+import { Briefcase, Building2, BookOpen, UploadCloud, CheckCircle2, Image as ImageIcon, FileText, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import confetti from 'canvas-confetti';
+import { checkFormForProfanity } from '../utils/profanityFilter';
 
 const DOMAINS = [
     'Software Engineering',
@@ -23,6 +24,7 @@ const StudentProfileForm = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [error, setError] = useState('');
 
     // Refs for hidden file inputs
     const photoInputRef = useRef<HTMLInputElement>(null);
@@ -33,6 +35,19 @@ const StudentProfileForm = () => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
+
+        if (!college || !domain) {
+            setError('Please fill out all required fields.');
+            return;
+        }
+
+        const profanityField = checkFormForProfanity({ college, domain });
+        if (profanityField) {
+            setError('Please remove inappropriate language before continuing.');
+            return;
+        }
+
         setIsLoading(true);
 
         // Simulate API call to save profile
@@ -105,7 +120,14 @@ const StudentProfileForm = () => {
                     {/* Decorative blob inside card */}
                     <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 rounded-full bg-brand-500/10 blur-2xl pointer-events-none"></div>
 
-                    <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+                    {error && (
+                        <div className="mb-6 bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl flex items-start gap-3 text-sm animate-in fade-in zoom-in duration-300">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                            <p>{error}</p>
+                        </div>
+                    )}
+
+                    <form noValidate onSubmit={handleSubmit} className="space-y-6 relative z-10">
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* College Field */}

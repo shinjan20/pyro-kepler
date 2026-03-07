@@ -10,6 +10,9 @@ interface AuthContextType {
     hasCompletedProfile: boolean;
     login: (role: UserRole, name?: string, photoUrl?: string) => Promise<void>;
     loginWithGoogle: (role: UserRole) => Promise<void>;
+    loginWithEmail: (email: string, password: string, role: UserRole) => Promise<void>;
+    registerWithEmail: (email: string, password: string, name: string, role: UserRole, companyData?: any) => Promise<void>;
+    verifyOtp: (email: string, otp: string, type?: 'signup' | 'magiclink' | 'recovery') => Promise<void>;
     logout: () => Promise<void>;
     updateUserPhoto: (photoUrl: string) => void;
     completeProfile: () => void;
@@ -118,7 +121,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
+    const loginWithEmail = async (email: string, password: string, role: UserRole) => {
+        const { error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
 
+        if (error) throw error;
+
+        // Let the onAuthStateChange handle setting the local state,
+        // but we'll store the intended role just in case metadata is missing it
+        localStorage.setItem('pendingAuthRole', role || 'student');
+    };
+
+    const registerWithEmail = async (email: string, password: string, name: string, role: UserRole, companyData?: any) => {
+        // Prepare metadata.
+        const metadata: any = {
+            full_name: name,
+            role: role
+        };
+
+        if (role === 'recruiter' && companyData) {
+            metadata.company_name = companyData.companyName;
+            metadata.company_website = companyData.companyWebsite;
+        }
+
+        const { error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: metadata
+            }
+        });
+
+        if (error) throw error;
+
+        // If auto-confirm is enabled or we don't need OTP, we would sign in here
+        // Since we are using OTP, we won't set local state until OTP is verified 
+        // OR until the onAuthStateChange picks it up.
+
+        // Save intended role for post-verification
+        localStorage.setItem('pendingAuthRole', role || 'student');
+    };
+
+    const verifyOtp = async (email: string, otp: string, type: 'signup' | 'magiclink' | 'recovery' = 'signup') => {
+        const { error } = await supabase.auth.verifyOtp({
+            email,
+            token: otp,
+            type: type
+        });
+
+        if (error) throw error;
+
+        // Local state will be handled by onAuthStateChange
+    };
 
     const logout = async () => {
         // Sign out of Supabase
@@ -148,7 +204,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <AuthContext.Provider value={{ userRole, userName, userPhoto, isAuthenticated, hasCompletedProfile, login, loginWithGoogle, logout, updateUserPhoto, completeProfile }}>
+        <AuthContext.Provider value={{
+            userRole, userName, userPhoto, isAuthenticated, hasCompletedProfile,
+            login, loginWithGoogle, loginWithEmail, registerWithEmail, verifyOtp,
+            logout, updateUserPhoto, completeProfile
+        }}>
             {children}
         </AuthContext.Provider>
     );

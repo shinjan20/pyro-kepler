@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Briefcase, Mail, Lock, AlertCircle, GraduationCap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -11,7 +12,7 @@ const Login = () => {
 
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { login, loginWithGoogle } = useAuth();
+    const { loginWithEmail, loginWithGoogle } = useAuth();
 
     const type = searchParams.get('type') as 'student' | 'recruiter' | null;
     const returnTo = searchParams.get('returnTo');
@@ -19,18 +20,16 @@ const Login = () => {
     const [isResettingPassword, setIsResettingPassword] = useState(false);
     const [resetMessage, setResetMessage] = useState('');
 
-    const handleEmailLogin = (e: React.FormEvent) => {
+    const handleEmailLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setIsLoading(true);
 
-        // Simulate API call
-        setTimeout(() => {
+        try {
             if (email && password) {
-                // Success simulation
-                setIsLoading(false);
-                login(type || 'student');
+                await loginWithEmail(email, password, type || 'student');
 
+                setIsLoading(false);
                 if (type === 'recruiter') {
                     navigate('/dashboard/recruiter');
                 } else {
@@ -40,7 +39,11 @@ const Login = () => {
                 setError('Please enter both email and password.');
                 setIsLoading(false);
             }
-        }, 1500);
+        } catch (err: any) {
+            console.error('Login Error:', err);
+            setError(err.message || 'Invalid email or password.');
+            setIsLoading(false);
+        }
     };
 
     const handleGoogleLogin = async () => {
@@ -50,13 +53,13 @@ const Login = () => {
 
         try {
             await loginWithGoogle(type || 'student');
-        } catch (err) {
-            setError('Failed to initialize Google Login.');
+        } catch (err: any) {
+            setError(err.message || 'Failed to initialize Google Login.');
             setIsLoading(false);
         }
     };
 
-    const handlePasswordReset = (e: React.FormEvent) => {
+    const handlePasswordReset = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!email) {
             setError('Please enter your email address to reset your password.');
@@ -64,15 +67,24 @@ const Login = () => {
         }
         setIsLoading(true);
         setError('');
-        // Simulate API call
-        setTimeout(() => {
+
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/auth/v1/update-password`,
+            });
+            if (error) throw error;
+
             setIsLoading(false);
             setResetMessage('If an account exists with this email, you will receive a password reset link shortly.');
             setTimeout(() => {
                 setIsResettingPassword(false);
                 setResetMessage('');
             }, 5000);
-        }, 1000);
+        } catch (err: any) {
+            console.error('Password Reset Error:', err);
+            setError(err.message || 'Failed to send password reset email.');
+            setIsLoading(false);
+        }
     };
 
     if (!type) {
@@ -199,7 +211,7 @@ const Login = () => {
                     )}
 
                     {isResettingPassword ? (
-                        <form className="space-y-6 relative z-10" onSubmit={handlePasswordReset}>
+                        <form noValidate className="space-y-6 relative z-10" onSubmit={handlePasswordReset}>
                             <div>
                                 <label htmlFor="reset-email" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                                     Email address
@@ -248,7 +260,7 @@ const Login = () => {
                             </div>
                         </form>
                     ) : (
-                        <form className="space-y-6 relative z-10" onSubmit={handleEmailLogin}>
+                        <form noValidate className="space-y-6 relative z-10" onSubmit={handleEmailLogin}>
                             <div>
                                 <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                                     Email address

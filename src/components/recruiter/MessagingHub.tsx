@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Send, CheckCircle, XCircle, Search, Clock, MessageSquare, Briefcase, ChevronLeft } from 'lucide-react';
+import { Send, CheckCircle, XCircle, Search, Clock, MessageSquare, Briefcase, ChevronLeft, AlertCircle } from 'lucide-react';
 import { MOCK_PROFILES } from '../../constants';
+import { useProfanityFilter } from '../../hooks/useProfanityFilter';
 
 interface MessagingHubProps {
     projects: any[]; // The active projects to match IDs
@@ -20,6 +21,8 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
     // For mobile view toggling between list and chat
     const [showMobileChat, setShowMobileChat] = useState(false);
 
+    const { containsProfanity } = useProfanityFilter();
+
     const filteredThreads = threads.filter(thread => {
         const threadCandidate = MOCK_PROFILES.find(p => p.id === thread.candidateId);
         if (!threadCandidate) return false;
@@ -37,9 +40,18 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
     const candidate = activeThread ? MOCK_PROFILES.find(p => p.id === activeThread.candidateId) : null;
     const project = activeThread ? projects.find(p => p.id === activeThread.projectId) : null;
 
+    const [errorMessage, setErrorMessage] = useState('');
+
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
+        setErrorMessage('');
+
         if (!newMessage.trim() || !activeThreadId) return;
+
+        if (containsProfanity(newMessage)) {
+            setErrorMessage('Please use professional language. Unprofessional or inappropriate terms are strictly prohibited.');
+            return;
+        }
 
         setThreads(prev => prev.map(thread => {
             if (thread.id === activeThreadId) {
@@ -262,6 +274,12 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus }
 
                     {/* Input Area */}
                     <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
+                        {errorMessage && (
+                            <div className="mb-3 bg-red-500/10 border border-red-500/30 text-red-500 p-3 rounded-xl flex items-start gap-2 text-sm animate-in fade-in slide-in-from-bottom-2">
+                                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                <p>{errorMessage}</p>
+                            </div>
+                        )}
                         {activeThread.status === 'active' ? (
                             <form onSubmit={handleSendMessage} className="flex gap-3">
                                 <input
