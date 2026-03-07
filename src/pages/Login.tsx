@@ -11,7 +11,7 @@ const Login = () => {
 
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { login } = useAuth();
+    const { login, loginWithGoogle } = useAuth();
 
     const type = searchParams.get('type') as 'student' | 'recruiter' | null;
     const returnTo = searchParams.get('returnTo');
@@ -43,19 +43,17 @@ const Login = () => {
         }, 1500);
     };
 
-    const handleGoogleLogin = () => {
+    const handleGoogleLogin = async () => {
         setIsLoading(true);
-        // Simulate Google OAuth redirect
-        setTimeout(() => {
-            setIsLoading(false);
-            login(type || 'student');
+        // Store intended path to return to after oauth flow completes
+        if (returnTo) localStorage.setItem('authReturnPath', returnTo);
 
-            if (type === 'recruiter') {
-                navigate('/dashboard/recruiter');
-            } else {
-                navigate(returnTo || '/projects');
-            }
-        }, 1000);
+        try {
+            await loginWithGoogle(type || 'student');
+        } catch (err) {
+            setError('Failed to initialize Google Login.');
+            setIsLoading(false);
+        }
     };
 
     const handlePasswordReset = (e: React.FormEvent) => {

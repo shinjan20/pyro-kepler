@@ -16,11 +16,22 @@ const MOCK_COLLEGES = Array.from(new Set(MOCK_PROFILES.map(p => p.college)));
 
 const RecruiterDashboard = () => {
     const [activeTab, setActiveTab] = useState<'projects' | 'talent' | 'collaborated' | 'messages'>('projects');
-    const [activeProjects, setActiveProjects] = useState<any[]>([]);
-    const [archivedProjects, setArchivedProjects] = useState<any[]>(INITIAL_ARCHIVED_PROJECTS);
+    const [activeProjects, setActiveProjects] = useState<any[]>(() => {
+        const saved = localStorage.getItem('pyroActiveProjects');
+        if (saved) return JSON.parse(saved);
+        return [];
+    });
+    const [archivedProjects, setArchivedProjects] = useState<any[]>(() => {
+        const saved = localStorage.getItem('pyroArchivedProjects');
+        if (saved) return JSON.parse(saved);
+        return INITIAL_ARCHIVED_PROJECTS;
+    });
     const [threads, setThreads] = useState<any[]>(MOCK_MESSAGES);
 
     useEffect(() => {
+        // If we already loaded projects from localStorage, do not override with mocks
+        if (activeProjects.length > 0) return;
+
         // Map MOCK_PROJECTS to the format expected by the recruiter dashboard
         const mappedMockProjects = MOCK_PROJECTS.map(p => ({
             id: p.id.toString(),
@@ -54,8 +65,27 @@ const RecruiterDashboard = () => {
         });
 
         setActiveProjects(active);
-        setArchivedProjects(prev => [...archivedToAppend, ...prev]);
+        setArchivedProjects(prev => {
+            const newArchived = [...archivedToAppend, ...prev];
+            localStorage.setItem('pyroArchivedProjects', JSON.stringify(newArchived));
+            return newArchived;
+        });
+        localStorage.setItem('pyroActiveProjects', JSON.stringify(active));
     }, []);
+
+    // Effect to persist active projects when they change
+    useEffect(() => {
+        if (activeProjects.length > 0) {
+            localStorage.setItem('pyroActiveProjects', JSON.stringify(activeProjects));
+        }
+    }, [activeProjects]);
+
+    // Effect to persist archived projects when they change
+    useEffect(() => {
+        if (archivedProjects.length > 0) {
+            localStorage.setItem('pyroArchivedProjects', JSON.stringify(archivedProjects));
+        }
+    }, [archivedProjects]);
 
     const location = useLocation();
 
@@ -118,11 +148,15 @@ const RecruiterDashboard = () => {
             // Update existing project
             setActiveProjects(prev => prev.map(p => p.id === editingProjectData.id ? { ...p, ...projectData } : p));
         } else {
-            // Create new project
+            // Create new project mapping with default arrays
             const newProject = {
                 ...projectData,
                 id: Date.now().toString(),
                 postedAt: new Date().toISOString(),
+                candidates: [],
+                appliedCandidates: [],
+                workingCandidates: [],
+                archivedCandidates: []
             };
             setActiveProjects(prev => [newProject, ...prev]);
         }

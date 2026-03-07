@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
+import { supabase } from '../lib/supabase';
 export type UserRole = 'student' | 'recruiter' | null;
 
 interface AuthContextType {
@@ -8,8 +8,9 @@ interface AuthContextType {
     userPhoto: string | null;
     isAuthenticated: boolean;
     hasCompletedProfile: boolean;
-    login: (role: UserRole, name?: string, photoUrl?: string) => void;
-    logout: () => void;
+    login: (role: UserRole, name?: string, photoUrl?: string) => Promise<void>;
+    loginWithGoogle: (role: UserRole) => Promise<void>;
+    logout: () => Promise<void>;
     updateUserPhoto: (photoUrl: string) => void;
     completeProfile: () => void;
 }
@@ -24,10 +25,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [hasCompletedProfile, setHasCompletedProfile] = useState<boolean>(false);
 
     useEffect(() => {
+        // Hydrate initial state from localStorage for UX (so it doesn't flash logged out)
         const storedRole = localStorage.getItem('userRole') as UserRole;
         const storedName = localStorage.getItem('userName') || '';
         const storedPhoto = localStorage.getItem('userPhoto');
         const storedCompleted = localStorage.getItem('hasCompletedProfile') === 'true';
+
         if (storedRole) {
             setUserRole(storedRole);
             setUserName(storedName);
@@ -35,9 +38,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsAuthenticated(true);
             setHasCompletedProfile(storedCompleted);
         }
+
+        // Listen for Supabase Auth state changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+                const user = session.user;
+                const metadata = user.user_metadata;
+
+                // Get the intended role from localStorage that we saved right before kicking off OAuth
+                const pendingRole = localStorage.getItem('pendingAuthRole') as UserRole || 'student';
+
+                const name = metadata.full_name || metadata.name || user.email?.split('@')[0] || 'User';
+                const photo = metadata.avatar_url || metadata.picture || null;
+
+                // Sync to our local storage system and states
+                localStorage.setItem('userRole', pendingRole);
+                localStorage.setItem('userName', name);
+                if (photo) localStorage.setItem('userPhoto', photo);
+                localStorage.removeItem('pendingAuthRole'); // clean up
+
+                setUserRole(pendingRole);
+                setUserName(name);
+                setUserPhoto(photo);
+                setIsAuthenticated(true);
+            } else if (event === 'SIGNED_OUT') {
+                // Clear local states
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('userName');
+                localStorage.removeItem('userPhoto');
+                localStorage.removeItem('hasCompletedProfile');
+                setUserRole(null);
+                setUserName('');
+                setUserPhoto(null);
+                setIsAuthenticated(false);
+                setHasCompletedProfile(false);
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
     }, []);
 
-    const login = (role: UserRole, name?: string, photoUrl?: string) => {
+    const login = async (role: UserRole, name?: string, photoUrl?: string) => {
         const defaultName = role === 'student' ? 'Student' : 'Recruiter';
         const finalName = name || defaultName;
 
@@ -53,7 +96,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(true);
     };
 
-    const logout = () => {
+    const loginWithGoogle = async (role: UserRole) => {
+        // Store intended role before redirecting out to Google
+        localStorage.setItem('pendingAuthRole', role || 'student');
+
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: `${window.location.origin}/auth/v1/callback`,
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'consent',
+                }
+            }
+        });
+
+        if (error) {
+            console.error('Error logging in with Google', error);
+            localStorage.removeItem('pendingAuthRole');
+            throw error;
+        }
+    };
+
+    const logout = async () => {
+        // Sign out of Supabase
+        await supabase.auth.signOut();
+
+        // Supabase onAuthStateChange will handle the rest of the local cleanup, 
+        // but we'll do it explicitly here for immediate UI update just in case
         localStorage.removeItem('userRole');
         localStorage.removeItem('userName');
         localStorage.removeItem('userPhoto');
@@ -76,7 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <AuthContext.Provider value={{ userRole, userName, userPhoto, isAuthenticated, hasCompletedProfile, login, logout, updateUserPhoto, completeProfile }}>
+        <AuthContext.Provider value={{ userRole, userName, userPhoto, isAuthenticated, hasCompletedProfile, login, loginWithGoogle, logout, updateUserPhoto, completeProfile }}>
             {children}
         </AuthContext.Provider>
     );
