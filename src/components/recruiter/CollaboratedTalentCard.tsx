@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Star, Mail, X, AlertTriangle, Send, CheckCircle2, MessageSquarePlus, StarHalf } from 'lucide-react';
 import { checkTextForProfanityAsync } from '../../utils/profanityFilter';
+import ProfanityWarningModal from '../ProfanityWarningModal';
 
 interface CollaboratedTalent {
     id: string | number;
@@ -75,14 +76,32 @@ const CollaboratedTalentCard = ({ collab, onMessageInitiated }: CollaboratedTale
         return 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400';
     };
 
-    const handleSaveFeedback = () => {
+    const handleFeedbackChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setError('');
+        setFeedbackText(e.target.value);
+    };
+
+    const handleSaveFeedback = async () => {
         if (rating === 0) return;
+
+        setIsSending(true);
+        const hasProfanity = await checkTextForProfanityAsync(feedbackText);
+        setIsSending(false);
+
+        if (hasProfanity) {
+            setError('Please use professional language in your feedback. Unprofessional or inappropriate terms are strictly prohibited.');
+            return;
+        }
+
+        setError('');
+
         // In a real app, this would save to the backend. Here we just update the UI state.
         setFeedbackSaved(true);
         setTimeout(() => {
             setIsAddingFeedback(false);
             collab.rating = rating;
             collab.review = feedbackText;
+            setFeedbackSaved(false);
         }, 1500);
     };
 
@@ -121,9 +140,18 @@ const CollaboratedTalentCard = ({ collab, onMessageInitiated }: CollaboratedTale
                             </div>
                         ) : (
                             <>
+                                <ProfanityWarningModal error={error} onClose={() => setError('')} />
+                                {error && (
+                                    <div className={`mb-3 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg items-start gap-2.5 animate-in fade-in zoom-in-95 duration-200 ${(error.toLowerCase().includes('inappropriate') || error.toLowerCase().includes('professional')) ? 'hidden md:flex' : 'flex'}`}>
+                                        <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                                        <p className="text-xs font-medium text-red-700 dark:text-red-400">
+                                            {error}
+                                        </p>
+                                    </div>
+                                )}
                                 <textarea
                                     value={feedbackText}
-                                    onChange={(e) => setFeedbackText(e.target.value)}
+                                    onChange={handleFeedbackChange}
                                     placeholder="Share your experience working with this candidate..."
                                     className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none resize-none h-20 mb-3 input-interactive"
                                 ></textarea>
@@ -228,8 +256,9 @@ const CollaboratedTalentCard = ({ collab, onMessageInitiated }: CollaboratedTale
                                         <X className="w-4 h-4" />
                                     </button>
                                 </div>
+                                <ProfanityWarningModal error={error} onClose={() => setError('')} />
                                 {error && (
-                                    <div className="mb-3 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2.5 animate-in fade-in zoom-in-95 duration-200">
+                                    <div className={`mb-3 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg items-start gap-2.5 animate-in fade-in zoom-in-95 duration-200 ${(error.toLowerCase().includes('inappropriate') || error.toLowerCase().includes('professional')) ? 'hidden md:flex' : 'flex'}`}>
                                         <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
                                         <p className="text-xs font-medium text-red-700 dark:text-red-400">
                                             {error}

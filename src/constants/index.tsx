@@ -202,6 +202,67 @@ export const MOCK_PROFILES: StudentProfile[] = [
         pastProjects: [
             { title: 'GenZ Influencer Campaign', company: 'GlamourBrands', domain: 'Digital Marketing', duration: '8 weeks' }
         ]
+    },
+    {
+        id: '11',
+        name: 'Arjun Das',
+        college: 'Indian Institute of Information Technology',
+        domain: 'Data Science',
+        completedProjects: 2,
+        photoUrl: 'https://images.unsplash.com/photo-1542909168-82c3e7fdca5c?w=400&h=400&fit=crop',
+        pastProjects: [
+            { title: 'Computer Vision Toolkit', company: 'AI Visionaries', domain: 'Machine Learning', duration: '12 weeks' },
+            { title: 'Predictive Analytics Dashboard', company: 'RetailX', domain: 'Data Science', duration: '8 weeks' }
+        ]
+    },
+    {
+        id: '12',
+        name: 'Sanya Miranda',
+        college: 'Symbiosis Institute of Design',
+        domain: 'Design',
+        completedProjects: 3,
+        photoUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop',
+        pastProjects: [
+            { title: 'E-commerce App Redesign', company: 'ShopEasy', domain: 'UI/UX Design', duration: '10 weeks' },
+            { title: 'Brand Guidelines Website', company: 'CreativeEdge', domain: 'Web Design', duration: '6 weeks' },
+            { title: 'Accessibility Audit', company: 'GovTech', domain: 'UX Research', duration: '4 weeks' }
+        ]
+    },
+    {
+        id: '13',
+        name: 'Karan Singh',
+        college: 'IIT Madras',
+        domain: 'Mechanical Engineering',
+        completedProjects: 1,
+        photoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop',
+        pastProjects: [
+            { title: 'Aerodynamics Simulation', company: 'SwiftAvia', domain: 'Mechanical Engineering', duration: '14 weeks' }
+        ]
+    },
+    {
+        id: '14',
+        name: 'Lily Wang',
+        college: 'National University of Singapore',
+        domain: 'Product Management',
+        completedProjects: 2,
+        photoUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop',
+        pastProjects: [
+            { title: 'User Retention Strategy', company: 'Appify', domain: 'Product Strategy', duration: '10 weeks' },
+            { title: 'Feature Prioritization Matrix', company: 'SaaSify', domain: 'Product Management', duration: '6 weeks' }
+        ]
+    },
+    {
+        id: '15',
+        name: 'Mohammed Ali',
+        college: 'NIT Trichy',
+        domain: 'Software Engineering',
+        completedProjects: 3,
+        photoUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400&h=400&fit=crop',
+        pastProjects: [
+            { title: 'GraphQL API Migration', company: 'DataSync', domain: 'Software Engineering', duration: '12 weeks' },
+            { title: 'Real-time Chat Module', company: 'ConnectApp', domain: 'Frontend Development', duration: '8 weeks' },
+            { title: 'CI/CD Pipeline Setup', company: 'DeployFast', domain: 'DevOps', duration: '4 weeks' }
+        ]
     }
 ];
 

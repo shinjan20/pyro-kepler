@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Lock, Briefcase, GraduationCap, Mail, Github, Linkedin, User, Clock, Send, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { checkTextForProfanityAsync } from '../../utils/profanityFilter';
+import ProfanityWarningModal from '../ProfanityWarningModal';
 import type { StudentProfile } from './StudentProfileCard';
 
 interface StudentProfileModalProps {
@@ -179,8 +180,9 @@ const StudentProfileModal = ({ isOpen, onClose, profile, hasActiveProjects, acti
                                                         <X className="w-4 h-4" />
                                                     </button>
                                                 </div>
+                                                <ProfanityWarningModal error={error} onClose={() => setError('')} />
                                                 {error && (
-                                                    <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3 animate-in fade-in zoom-in-95 duration-200">
+                                                    <div className={`mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg items-start gap-3 animate-in fade-in zoom-in-95 duration-200 ${(error.toLowerCase().includes('inappropriate') || error.toLowerCase().includes('professional')) ? 'hidden md:flex' : 'flex'}`}>
                                                         <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
                                                         <p className="text-xs font-medium text-red-700 dark:text-red-400">
                                                             {error}

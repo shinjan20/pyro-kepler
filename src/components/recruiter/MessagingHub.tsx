@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, CheckCircle, XCircle, Search, Clock, MessageSquare, Briefcase, ChevronLeft, AlertCircle, Paperclip, FileText, X, Download } from 'lucide-react';
 import { MOCK_PROFILES, MOCK_COLLABORATED_TALENT } from '../../constants';
 import { checkTextForProfanityAsync } from '../../utils/profanityFilter';
+import ProfanityWarningModal from '../ProfanityWarningModal';
 import jsPDF from 'jspdf';
 
 interface MessagingHubProps {
@@ -137,7 +138,7 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
-    const generatePDF = (candidateData: any, projectData: any, messageText: string) => {
+    const generatePDF = (candidateData: any, _projectData: any, messageText: string, letterType: 'completion' | 'joining') => {
         if (!candidateData) return;
         const doc = new jsPDF();
         const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -149,7 +150,7 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
 
         doc.setFontSize(10);
         doc.setTextColor(100, 116, 139); // Slate-500
-        doc.text('Official Project Completion Letter', 20, 38);
+        doc.text(`Official Project ${letterType === 'completion' ? 'Completion' : 'Joining'} Letter`, 20, 38);
 
         // Date & Meta
         doc.setFontSize(12);
@@ -159,39 +160,20 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
         // Subject
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text('Letter of Completion', 105, 80, { align: 'center' });
+        doc.text(`Letter of ${letterType === 'completion' ? 'Completion' : 'Joining'}`, 105, 80, { align: 'center' });
 
         // Body Content
         doc.setFontSize(12);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(51, 65, 85); // Slate-700
-        const greeting = `To Whom It May Concern,`;
-        const p1 = `This letter is to formally certify that ${candidateData.name} has successfully completed their engagement on the project: "${projectData?.role || 'Independent Project'}".`;
-        const p2 = messageText;
-
-        // Wrap text to fit page bounds
-        const wrappedGreeting = doc.splitTextToSize(greeting, 170);
-        const wrappedP1 = doc.splitTextToSize(p1, 170);
-        const wrappedP2 = doc.splitTextToSize(p2, 170);
+        const wrappedBody = doc.splitTextToSize(messageText, 170);
 
         let yPos = 100;
-        doc.text(wrappedGreeting, 20, yPos);
-        yPos += wrappedGreeting.length * 7 + 5;
-
-        doc.text(wrappedP1, 20, yPos);
-        yPos += wrappedP1.length * 7 + 5;
-
-        doc.text(wrappedP2, 20, yPos);
-
-        // Signature
-        yPos += wrappedP2.length * 7 + 30;
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(15, 23, 42);
-        doc.text('projectMatch Platform Administration', 20, yPos);
+        doc.text(wrappedBody, 20, yPos);
 
         // Output
         const safeName = candidateData.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        doc.save(`${safeName}_completion_letter.pdf`);
+        doc.save(`${safeName}_${letterType}_letter.pdf`);
     };
 
     if (threads.length === 0) {
@@ -391,11 +373,12 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
                                                     <FileText className="w-5 h-5 shrink-0" />
                                                     <span className="truncate font-medium">{msg.attachedFileName}</span>
                                                 </div>
-                                                {msg.attachedFileName.toLowerCase().includes('completion') && (
+                                                {msg.attachedFileName.toLowerCase().includes('letter') && (
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            generatePDF(candidate, project, msg.text);
+                                                            const letterType = msg.attachedFileName.toLowerCase().includes('joining') ? 'joining' : 'completion';
+                                                            generatePDF(candidate, project, msg.text, letterType);
                                                         }}
                                                         className="flex items-center gap-1.5 shrink-0 text-xs font-bold px-3 py-1.5 rounded bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm dark:bg-slate-800 dark:text-white dark:border-slate-700 dark:hover:bg-slate-700"
                                                     >
@@ -417,8 +400,9 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
 
                     {/* Input Area */}
                     <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
+                        <ProfanityWarningModal error={errorMessage} onClose={() => setErrorMessage('')} />
                         {errorMessage && (
-                            <div className="mb-3 bg-red-500/10 border border-red-500/30 text-red-500 p-3 rounded-xl flex items-start gap-2 text-sm animate-in fade-in slide-in-from-bottom-2">
+                            <div className={`mb-3 bg-red-500/10 border border-red-500/30 text-red-500 p-3 rounded-xl items-start gap-2 text-sm animate-in fade-in slide-in-from-bottom-2 ${(errorMessage.toLowerCase().includes('inappropriate') || errorMessage.toLowerCase().includes('professional')) ? 'hidden md:flex' : 'flex'}`}>
                                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                                 <p>{errorMessage}</p>
                             </div>

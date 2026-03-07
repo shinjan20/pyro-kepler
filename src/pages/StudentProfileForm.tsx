@@ -4,6 +4,7 @@ import { Briefcase, Building2, BookOpen, UploadCloud, CheckCircle2, Image as Ima
 import { useAuth } from '../contexts/AuthContext';
 import confetti from 'canvas-confetti';
 import { checkFormForProfanityAsync } from '../utils/profanityFilter';
+import ProfanityWarningModal from '../components/ProfanityWarningModal';
 
 const DOMAINS = [
     'Software Engineering',
@@ -121,8 +122,9 @@ const StudentProfileForm = () => {
                     {/* Decorative blob inside card */}
                     <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 rounded-full bg-brand-500/10 blur-2xl pointer-events-none"></div>
 
+                    <ProfanityWarningModal error={error} onClose={() => setError('')} />
                     {error && (
-                        <div className="mb-6 bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl flex items-start gap-3 text-sm animate-in fade-in zoom-in duration-300">
+                        <div className={`mb-6 bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl items-start gap-3 text-sm animate-in fade-in zoom-in duration-300 ${(error.toLowerCase().includes('inappropriate') || error.toLowerCase().includes('professional')) ? 'hidden md:flex' : 'flex'}`}>
                             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
                             <p>{error}</p>
                         </div>

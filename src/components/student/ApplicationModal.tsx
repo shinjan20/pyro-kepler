@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Send, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import { MOCK_PROJECTS } from '../../constants';
 import { checkFormForProfanityAsync } from '../../utils/profanityFilter';
+import ProfanityWarningModal from '../ProfanityWarningModal';
 
 interface ApplicationModalProps {
     isOpen: boolean;
@@ -101,8 +102,9 @@ export default function ApplicationModal({ isOpen, onClose, projectId, onSubmitS
                             </p>
                         </div>
 
+                        <ProfanityWarningModal error={error} onClose={() => setError('')} />
                         {error && (
-                            <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl flex items-start gap-3 text-sm animate-in fade-in zoom-in duration-300">
+                            <div className={`bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl items-start gap-3 text-sm animate-in fade-in zoom-in duration-300 ${(error.toLowerCase().includes('inappropriate') || error.toLowerCase().includes('professional')) ? 'hidden md:flex' : 'flex'}`}>
                                 <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
                                 <p>{error}</p>
                             </div>

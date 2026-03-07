@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Briefcase, FileText, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { DOMAINS } from '../../constants';
 import { checkFormForProfanityAsync } from '../../utils/profanityFilter';
+import ProfanityWarningModal from '../ProfanityWarningModal';
 
 interface PostProjectModalProps {
     isOpen: boolean;
@@ -25,6 +26,14 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [error, setError] = useState('');
+    const modalRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (error && modalRef.current) {
+            // Target the fixed inset-0 wrapper which handles the overflow-y-auto scrolling
+            modalRef.current.parentElement?.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, [error]);
 
     useEffect(() => {
         if (editingProject && isOpen) {
@@ -108,8 +117,8 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#030712]/80 backdrop-blur-xl overflow-y-auto">
-            <div className="glass-card w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden mt-10 mb-10 border border-white/10 dark:border-slate-700/50 animate-in fade-in zoom-in-95 duration-300 relative">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#030712]/80 backdrop-blur-xl overflow-y-auto">
+            <div ref={modalRef} className="glass-card w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden mt-10 mb-10 border border-white/10 dark:border-slate-700/50 animate-in fade-in zoom-in-95 duration-300 relative bg-white dark:bg-slate-900">
 
                 {/* Decorative blob inside modal */}
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 rounded-full bg-brand-500/10 blur-3xl pointer-events-none"></div>
@@ -133,8 +142,9 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                     </button>
                 </div>
 
+                <ProfanityWarningModal error={error} onClose={() => setError('')} />
                 {error && (
-                    <div className="mx-6 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3 animate-in fade-in zoom-in-95 duration-200">
+                    <div className={`mx-6 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg items-start gap-3 animate-in fade-in zoom-in-95 duration-200 relative z-20 ${(error.toLowerCase().includes('inappropriate') || error.toLowerCase().includes('professional')) ? 'hidden md:flex' : 'flex'}`}>
                         <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                         <p className="text-sm font-medium text-red-700 dark:text-red-400">
                             {error}

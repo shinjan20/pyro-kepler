@@ -2,6 +2,7 @@ import { Mail, MessageSquare, FileText, X, CheckCircle, GraduationCap, Briefcase
 import { useState } from 'react';
 import type { StudentProfile } from './StudentProfileCard';
 import AlertModal from '../AlertModal';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface WorkingCandidateViewProps {
     candidate: StudentProfile;
@@ -12,6 +13,7 @@ interface WorkingCandidateViewProps {
 }
 
 const WorkingCandidateView = ({ candidate, onMessage, onSendLetter, onCompleteProject }: WorkingCandidateViewProps) => {
+    const { userName } = useAuth();
     const [letterModalOpen, setLetterModalOpen] = useState<'joining' | 'completion' | null>(null);
     const [letterContent, setLetterContent] = useState('');
     const [alertConfig, setAlertConfig] = useState<{ isOpen: boolean, title: string, message: string, type: 'success' | 'error' | 'info' }>({
@@ -21,9 +23,9 @@ const WorkingCandidateView = ({ candidate, onMessage, onSendLetter, onCompletePr
         type: 'success'
     });
 
-    const defaultJoiningLetter = `Dear ${candidate.name},\n\nWe are thrilled to officially welcome you to the team for this live project! We were very impressed with your background and believe your skills will be a great addition to our efforts.\n\nPlease find attached the necessary onboarding documents and your initial task assignments.\n\nBest regards,\n[Your Name/Company Name]`;
+    const defaultJoiningLetter = `Dear ${candidate.name},\n\nWe are thrilled to officially welcome you to the team for this live project! We were very impressed with your background and believe your skills will be a great addition to our efforts.\n\nPlease find attached the necessary onboarding documents and your initial task assignments.\n\nBest regards,\n${userName}`;
 
-    const defaultCompletionLetter = `Dear ${candidate.name},\n\nCongratulations on successfully completing the live project! We greatly appreciate the hard work, dedication, and valuable contributions you have made during your time with us.\n\nThis letter serves as an official confirmation of your project completion. We wish you the best in your future endeavors.\n\nBest regards,\n[Your Name/Company Name]`;
+    const defaultCompletionLetter = `Dear ${candidate.name},\n\nCongratulations on successfully completing the live project! We greatly appreciate the hard work, dedication, and valuable contributions you have made during your time with us.\n\nThis letter serves as an official confirmation of your project completion. We wish you the best in your future endeavors.\n\nBest regards,\n${userName}`;
 
     const openLetterModal = (type: 'joining' | 'completion') => {
         setLetterContent(type === 'joining' ? defaultJoiningLetter : defaultCompletionLetter);

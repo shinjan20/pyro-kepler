@@ -16,6 +16,7 @@ interface AuthContextType {
     logout: () => Promise<void>;
     updateUserPhoto: (photoUrl: string) => void;
     completeProfile: () => void;
+    updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -201,6 +202,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setHasCompletedProfile(false);
     };
 
+    const updatePassword = async (currentPassword: string, newPassword: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || !user.email) throw new Error("User not authenticated.");
+
+        // Verify current password first
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: user.email,
+            password: currentPassword
+        });
+
+        if (signInError) {
+            throw new Error("Incorrect current password.");
+        }
+
+        const { error: updateError } = await supabase.auth.updateUser({
+            password: newPassword
+        });
+
+        if (updateError) {
+            throw updateError;
+        }
+    };
+
     const updateUserPhoto = (photoUrl: string) => {
         localStorage.setItem('userPhoto', photoUrl);
         setUserPhoto(photoUrl);
@@ -215,7 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         <AuthContext.Provider value={{
             userRole, userName, userPhoto, isAuthenticated, hasCompletedProfile,
             login, loginWithGoogle, loginWithEmail, registerWithEmail, verifyOtp,
-            logout, updateUserPhoto, completeProfile
+            logout, updateUserPhoto, completeProfile, updatePassword
         }}>
             {children}
         </AuthContext.Provider>

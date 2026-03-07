@@ -8,13 +8,15 @@ import ProjectDashboard from '../components/recruiter/ProjectDashboard';
 import MessagingHub from '../components/recruiter/MessagingHub';
 import ConfirmModal from '../components/ConfirmModal';
 import CollaboratedTalentCard from '../components/recruiter/CollaboratedTalentCard';
-import { MOCK_PROFILES, INITIAL_ARCHIVED_PROJECTS, MOCK_PROJECTS, MOCK_COLLABORATED_TALENT, MOCK_MESSAGES, DOMAINS } from '../constants';
+import { MOCK_PROFILES, MOCK_COLLABORATED_TALENT, DOMAINS } from '../constants';
 import CelebrationModal from '../components/CelebrationModal';
 import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
 
 const MOCK_COLLEGES = Array.from(new Set(MOCK_PROFILES.map(p => p.college)));
 
 const RecruiterDashboard = () => {
+    const { userName } = useAuth();
     const [activeTab, setActiveTab] = useState<'projects' | 'talent' | 'collaborated' | 'messages'>('projects');
     const [targetMessageThreadId, setTargetMessageThreadId] = useState<string | null>(null);
     const [activeProjects, setActiveProjects] = useState<any[]>(() => {
@@ -25,54 +27,20 @@ const RecruiterDashboard = () => {
     const [archivedProjects, setArchivedProjects] = useState<any[]>(() => {
         const saved = localStorage.getItem('pyroArchivedProjects');
         if (saved) return JSON.parse(saved);
-        return INITIAL_ARCHIVED_PROJECTS;
+        return [];
     });
-    const [threads, setThreads] = useState<any[]>(MOCK_MESSAGES);
+    const [threads, setThreads] = useState<any[]>(() => {
+        const saved = localStorage.getItem('pyroRecruiterThreads');
+        if (saved) return JSON.parse(saved);
+        return [];
+    });
+    const [collaboratedTalent, setCollaboratedTalent] = useState<any[]>(() => {
+        const saved = localStorage.getItem('pyroCollaboratedTalent');
+        if (saved) return JSON.parse(saved);
+        return MOCK_COLLABORATED_TALENT;
+    });
 
-    useEffect(() => {
-        // If we already loaded projects from localStorage, do not override with mocks
-        if (activeProjects.length > 0) return;
 
-        // Map MOCK_PROJECTS to the format expected by the recruiter dashboard
-        const mappedMockProjects = MOCK_PROJECTS.map(p => ({
-            id: p.id.toString(),
-            role: p.title,
-            domain: p.category,
-            objective: p.type + ' Setup',
-            expectations: p.tags.join(', '),
-            tenure: p.duration.split(' ')[0], // just the number
-            positions: p.totalPositions,
-            hiredPositions: p.hiredPositions,
-            remuneration: p.remuneration,
-            postedAt: p.postedAt,
-            candidates: MOCK_PROFILES.slice(0, 2), // Legacy mapping
-            appliedCandidates: MOCK_PROFILES.slice(0, 2),
-            archivedCandidates: [MOCK_PROFILES[2]],
-            workingCandidates: [MOCK_PROFILES[3]]
-        }));
-
-        // Apply auto-archive rule: if older than 2 months (60 days) and 0 hired positions, archive it.
-        const active: any[] = [];
-        const archivedToAppend: any[] = [];
-        const now = Date.now();
-
-        mappedMockProjects.forEach(project => {
-            const isOlderThan2Months = (now - new Date(project.postedAt).getTime()) > 60 * 24 * 60 * 60 * 1000;
-            if (isOlderThan2Months && project.hiredPositions === 0) {
-                archivedToAppend.push({ ...project, status: 'archived' });
-            } else {
-                active.push(project);
-            }
-        });
-
-        setActiveProjects(active);
-        setArchivedProjects(prev => {
-            const newArchived = [...archivedToAppend, ...prev];
-            localStorage.setItem('pyroArchivedProjects', JSON.stringify(newArchived));
-            return newArchived;
-        });
-        localStorage.setItem('pyroActiveProjects', JSON.stringify(active));
-    }, []);
 
     // Effect to persist active projects when they change
     useEffect(() => {
@@ -87,6 +55,13 @@ const RecruiterDashboard = () => {
             localStorage.setItem('pyroArchivedProjects', JSON.stringify(archivedProjects));
         }
     }, [archivedProjects]);
+
+    // Effect to persist collaborated talent when they change
+    useEffect(() => {
+        if (collaboratedTalent.length > 0) {
+            localStorage.setItem('pyroCollaboratedTalent', JSON.stringify(collaboratedTalent));
+        }
+    }, [collaboratedTalent]);
 
     const location = useLocation();
 
@@ -238,9 +213,11 @@ const RecruiterDashboard = () => {
                         </div>
                     ),
                     onPrimaryAction: () => {
-                        // Create a message thread for each working candidate
                         projectToArchive.workingCandidates?.forEach((candidate: any) => {
-                            handleSendLetter(projectToArchive.id, candidate.id, 'completion', `Congratulations on successfully completing the ${projectToArchive.role} project! Please find your completion letter attached.`);
+                            // 1. Move them to Collaborated Talent / Completed Status
+                            handleCompleteProject(projectToArchive.id, candidate.id);
+                            // 2. Send the completion letter
+                            handleSendLetter(projectToArchive.id, candidate.id, 'completion', `Congratulations on successfully completing the ${projectToArchive.role} project! Please find your completion letter attached.\n\nBest regards,\n${userName}`);
                         });
                         setShowCelebration(false);
 
@@ -286,13 +263,25 @@ const RecruiterDashboard = () => {
             return p;
         }));
 
-        // Create a new thread if it doesn't exist
+        // Create a new thread if it doesn't exist for this candidate
         let threadIdToOpen = null;
         setThreads(prev => {
-            const exists = prev.find(t => t.projectId === projectId && t.candidateId === candidateId);
+            const exists = prev.find(t => t.candidateId === candidateId);
             if (exists) {
                 threadIdToOpen = exists.id;
-                return prev;
+                const newMessage = {
+                    id: Date.now().toString() + '1',
+                    senderId: 'recruiter',
+                    text: `Hi ${acceptedCandidate?.name || 'Candidate'}, your application for this project has been accepted! Let's discuss the next steps.`,
+                    timestamp: new Date().toISOString()
+                };
+                const updated = prev.map(t =>
+                    t.id === exists.id
+                        ? { ...t, projectId, messages: [...t.messages, newMessage] } // Update the project association and add the accept message
+                        : t
+                );
+                localStorage.setItem('pyroRecruiterThreads', JSON.stringify(updated));
+                return updated;
             } else if (acceptedCandidate) {
                 const newId = Date.now().toString();
                 threadIdToOpen = newId;
@@ -310,7 +299,9 @@ const RecruiterDashboard = () => {
                         }
                     ]
                 };
-                return [newThread, ...prev];
+                const updated = [newThread, ...prev];
+                localStorage.setItem('pyroRecruiterThreads', JSON.stringify(updated));
+                return updated;
             }
             return prev;
         });
@@ -370,7 +361,9 @@ const RecruiterDashboard = () => {
                         status: 'selected', // Status is selected because they are working
                         messages: []
                     };
-                    return [newThread, ...prev];
+                    const updated = [newThread, ...prev];
+                    localStorage.setItem('pyroRecruiterThreads', JSON.stringify(updated));
+                    return updated;
                 }
             }
             return prev;
@@ -384,22 +377,25 @@ const RecruiterDashboard = () => {
     const handleSendLetter = (projectId: string, candidateId: string, _type: 'joining' | 'completion' | 'discovery', content: string) => {
         let newOrExistingThreadId: string | null = null;
         setThreads(prev => {
+            // Find existing thread by candidateId primarily, avoiding duplicates
             const existingThread = prev.find(t => t.candidateId === candidateId);
             const newMessage = {
                 id: Date.now().toString(),
                 senderId: 'recruiter',
                 text: content,
-                attachedFileName: _type === 'completion' ? 'Completion Letter.pdf' : undefined,
+                attachedFileName: _type === 'completion' ? 'Completion Letter.pdf' : _type === 'joining' ? 'Joining Letter.pdf' : undefined,
                 timestamp: new Date().toISOString()
             };
 
             if (existingThread) {
                 newOrExistingThreadId = existingThread.id;
-                return prev.map(t =>
+                const updated = prev.map(t =>
                     t.id === existingThread.id
-                        ? { ...t, projectId, messages: [...t.messages, newMessage] } // update thread context to new project
+                        ? { ...t, projectId, status: _type === 'completion' ? 'selected' : t.status, messages: [...t.messages, newMessage] } // update thread context to new project
                         : t
                 );
+                localStorage.setItem('pyroRecruiterThreads', JSON.stringify(updated));
+                return updated;
             } else {
                 const newId = Date.now().toString();
                 newOrExistingThreadId = newId;
@@ -410,7 +406,9 @@ const RecruiterDashboard = () => {
                     status: 'active',
                     messages: [newMessage]
                 };
-                return [newThread, ...prev];
+                const updated = [newThread, ...prev];
+                localStorage.setItem('pyroRecruiterThreads', JSON.stringify(updated));
+                return updated;
             }
         });
 
@@ -420,7 +418,7 @@ const RecruiterDashboard = () => {
                 setTargetMessageThreadId(newOrExistingThreadId);
                 setActiveTab('messages');
             }
-        } else if (_type === 'completion') {
+        } else if (_type === 'completion' || _type === 'joining') {
             if (newOrExistingThreadId) {
                 setTargetMessageThreadId(newOrExistingThreadId);
                 setActiveTab('messages');
@@ -433,6 +431,18 @@ const RecruiterDashboard = () => {
             if (p.id === projectId) {
                 const candidate = p.workingCandidates?.find((c: any) => c.id === candidateId);
                 if (candidate) {
+                    const collabEntry = {
+                        id: `collab-${Date.now()}`,
+                        candidateId: candidate.id,
+                        name: candidate.name,
+                        photoUrl: candidate.photoUrl,
+                        projectName: p.role,
+                        domain: candidate.domain,
+                        rating: 0,
+                        review: ''
+                    };
+                    setCollaboratedTalent(prevCollab => [collabEntry, ...prevCollab]);
+
                     const updatedProject = {
                         ...p,
                         workingCandidates: p.workingCandidates.filter((c: any) => c.id !== candidateId),
@@ -465,13 +475,16 @@ const RecruiterDashboard = () => {
     };
 
     const handleCandidateMessageStatusChange = (projectId: string, candidateId: string, status: 'selected' | 'rejected') => {
-        // Update thread status
-        setThreads(prev => prev.map(t => {
-            if (t.projectId === projectId && t.candidateId === candidateId) {
-                return { ...t, status };
-            }
-            return t;
-        }));
+        setThreads(prev => {
+            const updated = prev.map(t => {
+                if (t.projectId === projectId && t.candidateId === candidateId) {
+                    return { ...t, status };
+                }
+                return t;
+            });
+            localStorage.setItem('pyroRecruiterThreads', JSON.stringify(updated));
+            return updated;
+        });
 
         setActiveProjects(prev => prev.map(p => {
             if (p.id === projectId) {
@@ -503,13 +516,17 @@ const RecruiterDashboard = () => {
                     if (status === 'selected') {
                         setCelebrationData({
                             title: 'Candidate Hired!',
-                            message: `${candidate.name} is hired and moved to the Currently Working tab of the project.`,
-                            primaryActionText: 'View Working Tab',
+                            message: `${candidate.name} is hired and moved to the Currently Working tab of the project. Would you like to send them an official joining letter?`,
+                            primaryActionText: 'Send Joining Letter',
                             onPrimaryAction: () => {
+                                handleSendLetter(updatedProject.id, candidate.id, 'joining', `Dear ${candidate.name},\n\nWe are thrilled to officially welcome you to the team for the ${updatedProject.role} project! We were very impressed with your background and believe your skills will be a great addition to our efforts.\n\nPlease find attached the necessary onboarding documents and your initial task assignments.\n\nBest regards,\n${userName}`);
                                 setShowCelebration(false);
-                                setSelectedProject(updatedProject);
-                                setProjectInitialTab('working');
-                                setIsProjectDetailsModalOpen(true);
+                                setTimeout(() => {
+                                    toast.success('Joining letter has been generated and sent to the candidate.');
+                                    setSelectedProject(updatedProject);
+                                    setProjectInitialTab('working');
+                                    setIsProjectDetailsModalOpen(true);
+                                }, 500);
                             }
                         });
                         setShowCelebration(true);
@@ -810,15 +827,23 @@ const RecruiterDashboard = () => {
 
                     {activeTab === 'collaborated' && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {MOCK_COLLABORATED_TALENT.map(collab => (
-                                    <CollaboratedTalentCard
-                                        key={collab.id}
-                                        collab={collab}
-                                        onMessageInitiated={(projectId, candidateId, message) => handleSendLetter(projectId, candidateId, 'discovery', message)}
-                                    />
-                                ))}
-                            </div>
+                            {collaboratedTalent.length === 0 ? (
+                                <div className="text-center py-20 glass-card">
+                                    <CheckCircle className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                                    <h3 className="text-lg font-medium text-slate-900 dark:text-white">No Collaborated Talent Yet</h3>
+                                    <p className="mt-2 text-slate-500 dark:text-slate-400">Complete projects with candidates to see them here.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {collaboratedTalent.map(collab => (
+                                        <CollaboratedTalentCard
+                                            key={collab.id}
+                                            collab={collab}
+                                            onMessageInitiated={(projectId, candidateId, message) => handleSendLetter(projectId, candidateId, 'discovery', message)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
 

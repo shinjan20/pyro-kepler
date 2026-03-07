@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Briefcase, Mail, Globe, Save, Lock, Building2, BookOpen, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import { checkFormForProfanityAsync } from '../utils/profanityFilter';
+import ProfanityWarningModal from '../components/ProfanityWarningModal';
 
 // DOMAINS reference duplicated from the profile form logic
 const DOMAINS = [
@@ -16,7 +17,7 @@ const DOMAINS = [
 ];
 
 const Settings = () => {
-    const { userRole, userName, login } = useAuth();
+    const { userRole, userName, login, updatePassword } = useAuth();
 
     // Form State
     const [name, setName] = useState(userName);
@@ -87,7 +88,7 @@ const Settings = () => {
         }, 1000);
     };
 
-    const handlePasswordChange = (e: React.FormEvent) => {
+    const handlePasswordChange = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setSuccessMessage('');
@@ -102,11 +103,15 @@ const Settings = () => {
             return;
         }
 
-        // Mock password change logic here
-        setCurrentPassword('');
-        setNewPassword('');
-        setSuccessMessage('Password changed successfully.');
-        setTimeout(() => setSuccessMessage(''), 3000);
+        try {
+            await updatePassword(currentPassword, newPassword);
+            setCurrentPassword('');
+            setNewPassword('');
+            setSuccessMessage('Password changed successfully.');
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (err: any) {
+            setError(err.message || 'Failed to update password.');
+        }
     };
 
     return (
@@ -124,8 +129,9 @@ const Settings = () => {
                     </div>
                 )}
 
+                <ProfanityWarningModal error={error} onClose={() => setError('')} />
                 {error && (
-                    <div className="mb-6 bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl flex items-start gap-3 text-sm animate-in fade-in slide-in-from-top-2">
+                    <div className={`mb-6 bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl items-start gap-3 text-sm animate-in fade-in slide-in-from-top-2 ${(error.toLowerCase().includes('inappropriate') || error.toLowerCase().includes('professional')) ? 'hidden md:flex' : 'flex'}`}>
                         <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
                         <p>{error}</p>
                     </div>

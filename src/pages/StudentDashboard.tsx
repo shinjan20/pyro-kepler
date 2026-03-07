@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { MOCK_PROJECTS, MOCK_MESSAGES } from '../constants';
+import { MOCK_PROJECTS } from '../constants';
 import { Briefcase, CheckCircle2, Archive, Clock, Home, Banknote, Calendar, Tag, X, CalendarCheck, MessageSquare, Download, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StudentMessagingHub from '../components/student/StudentMessagingHub';
@@ -28,15 +28,9 @@ export default function StudentDashboard() {
     const [viewingApplicationId, setViewingApplicationId] = useState<number | null>(null);
     const [downloadingLetter, setDownloadingLetter] = useState<{ projectId: number, type: 'Offer Letter' | 'Completion Letter' } | null>(null);
     const [threads, setThreads] = useState<any[]>(() => {
-        // Hydrate threads with project/company data for the demo
-        return MOCK_MESSAGES.map(thread => {
-            const project = MOCK_PROJECTS.find(p => p.id.toString() === thread.projectId);
-            return {
-                ...thread,
-                projectName: project?.title || 'Unknown Project',
-                companyName: project?.company || 'Unknown Company'
-            }
-        });
+        const saved = localStorage.getItem('pyroStudentThreads');
+        if (saved) return JSON.parse(saved);
+        return [];
     });
 
     // Read applications from localStorage
@@ -46,16 +40,23 @@ export default function StudentDashboard() {
     // Get actual project details for applied projects
     const appliedProjects = MOCK_PROJECTS.filter(p => appliedProjectIds.includes(p.id));
 
-    // Simulate different project lists by slicing MOCK_PROJECTS for demo purposes
-    const ongoingProjects = [MOCK_PROJECTS[2]];
-    const interviewProjects = MOCK_PROJECTS.slice(1, 2);
-    // Grouping completed and rejected mock data into "archived"
-    const archivedProjects = [
-        { ...MOCK_PROJECTS[3], archiveStatus: 'Interview Rejected', archiveStatusColor: 'text-red-500 bg-red-500/10' },
-        { ...MOCK_PROJECTS[4], archiveStatus: 'Completed', archiveStatusColor: 'text-brand-500 bg-brand-500/10' },
-        { ...MOCK_PROJECTS[0], archiveStatus: 'Positions Filled', archiveStatusColor: 'text-slate-500 bg-slate-500/10' },
-        { ...MOCK_PROJECTS[1], archiveStatus: 'Expired', archiveStatusColor: 'text-amber-500 bg-amber-500/10' }
-    ];
+    const [ongoingProjects] = useState<any[]>(() => {
+        const saved = localStorage.getItem('pyroStudentOngoing');
+        if (saved) return JSON.parse(saved);
+        return [];
+    });
+
+    const [interviewProjects] = useState<any[]>(() => {
+        const saved = localStorage.getItem('pyroStudentInterviews');
+        if (saved) return JSON.parse(saved);
+        return [];
+    });
+
+    const [archivedProjects] = useState<any[]>(() => {
+        const saved = localStorage.getItem('pyroStudentArchived');
+        if (saved) return JSON.parse(saved);
+        return [];
+    });
 
     if (userRole !== 'student') {
         return (
