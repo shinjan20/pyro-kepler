@@ -1,9 +1,7 @@
-import { X, Clock, Banknote, Calendar, Home as HomeIcon, MapPin, Tag, Users, ShieldAlert, Zap, Send, Loader2, Check } from 'lucide-react';
+import { X, Clock, Banknote, Calendar, Home as HomeIcon, MapPin, Tag, Users, ShieldAlert, Zap, Send } from 'lucide-react';
 import { MOCK_PROJECTS } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
 import { useInterviewStatus } from '../../hooks/useInterviewStatus';
-import { useState } from 'react';
-import toast from 'react-hot-toast';
 
 interface ProjectDetailsModalProps {
     isOpen: boolean;
@@ -23,7 +21,6 @@ const timeAgo = (dateInput?: string) => {
 
 export default function ProjectDetailsModal({ isOpen, onClose, projectId, onApplyClicked }: ProjectDetailsModalProps) {
     const { isAuthenticated, userRole } = useAuth();
-    const [applyState, setApplyState] = useState<'idle' | 'loading' | 'success'>('idle');
 
     if (!isOpen) return null;
 
@@ -37,21 +34,10 @@ export default function ProjectDetailsModal({ isOpen, onClose, projectId, onAppl
 
     const handleApplyWithFeedback = () => {
         if (interviewStatus === 'closed') return;
-        setApplyState('loading');
 
-        // Simulate network request
-        setTimeout(() => {
-            setApplyState('success');
-            onApplyClicked();
-            toast.success('Your application has been fast-tracked to the recruiter!', { icon: '🚀' });
-
-            // Wait slightly before closing modal
-            setTimeout(() => {
-                setApplyState('idle'); // Reset for next open
-                onClose();
-            }, 1000);
-
-        }, 1500);
+        // Skip the fake delay and toast, just proceed directly to the application steps
+        onApplyClicked();
+        onClose();
     };
 
     return (
@@ -221,18 +207,14 @@ export default function ProjectDetailsModal({ isOpen, onClose, projectId, onAppl
                             ) : (
                                 <button
                                     onClick={handleApplyWithFeedback}
-                                    disabled={interviewStatus === 'closed' || applyState !== 'idle'}
+                                    disabled={interviewStatus === 'closed'}
                                     title={interviewStatus === 'closed' ? "Your profile is closed to projects." : ""}
                                     className={`w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-white transition-all flex items-center justify-center min-w-[160px] gap-2 ${interviewStatus === 'closed'
                                         ? 'bg-brand-600/50 cursor-not-allowed opacity-50 grayscale blur-[1px]'
-                                        : applyState === 'success'
-                                            ? 'bg-emerald-500 hover:bg-emerald-600'
-                                            : 'bg-brand-600 hover:bg-brand-500 hover:shadow-lg hover:shadow-brand-500/20 active:scale-95'
+                                        : 'bg-brand-600 hover:bg-brand-500 hover:shadow-lg hover:shadow-brand-500/20 active:scale-95'
                                         }`}
                                 >
-                                    {applyState === 'idle' && <><Send className="w-4 h-4" /> Apply Now</>}
-                                    {applyState === 'loading' && <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</>}
-                                    {applyState === 'success' && <><Check className="w-4 h-4" /> Applied!</>}
+                                    <Send className="w-4 h-4" /> Apply Now
                                 </button>
                             )}
                         </div>

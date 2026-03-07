@@ -33,7 +33,7 @@ const Login = () => {
                 if (type === 'recruiter') {
                     navigate('/dashboard/recruiter');
                 } else {
-                    navigate(returnTo || '/projects');
+                    navigate(returnTo || '/dashboard/student');
                 }
             } else {
                 setError('Please enter both email and password.');

@@ -3,8 +3,6 @@ import { ArrowRight, Clock, Tag, Banknote, Calendar, Users, Home } from 'lucide-
 import { Link, useNavigate } from 'react-router-dom';
 import { MOCK_PROJECTS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
-import { useInterviewStatus } from '../hooks/useInterviewStatus';
-import toast from 'react-hot-toast';
 
 const timeAgo = (dateInput?: string) => {
     if (!dateInput) return 'Recently';
@@ -29,9 +27,8 @@ const timeAgo = (dateInput?: string) => {
 };
 
 const FeaturedProjects = () => {
-    const { isAuthenticated, userRole } = useAuth();
+    const { userRole } = useAuth();
     const navigate = useNavigate();
-    const { interviewStatus } = useInterviewStatus();
 
     const featuredList = MOCK_PROJECTS.filter(project => {
         const isOlderThan2Months = (Date.now() - new Date(project.postedAt).getTime()) > 60 * 24 * 60 * 60 * 1000;
@@ -113,29 +110,15 @@ const FeaturedProjects = () => {
 
                             {userRole !== 'recruiter' && (
                                 <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                                    {!isAuthenticated ? (
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); navigate('/login?returnTo=/projects'); }}
-                                            className="w-full text-center text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 py-3 rounded-xl btn-interactive"
-                                        >
-                                            Check Details <ArrowRight className="w-4 h-4" />
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                toast.success('We fast-tracked your profile to the recruiter. Good luck!');
-                                            }}
-                                            disabled={interviewStatus === 'closed'}
-                                            title={interviewStatus === 'closed' ? "Your profile is closed to projects." : ""}
-                                            className={`w-full text-center text-sm font-medium text-white flex items-center justify-center gap-2 py-3 rounded-xl shadow-md btn-interactive transition-all ${interviewStatus === 'closed'
-                                                ? 'bg-brand-600/50 cursor-not-allowed opacity-50 grayscale blur-[1px]'
-                                                : 'bg-brand-600 shadow-brand-500/20 hover:bg-brand-500'
-                                                }`}
-                                        >
-                                            Apply Now <ArrowRight className="w-4 h-4" />
-                                        </button>
-                                    )}
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigate('/projects');
+                                        }}
+                                        className="w-full text-center text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 py-3 rounded-xl btn-interactive hover:shadow-sm"
+                                    >
+                                        Check Details <ArrowRight className="w-4 h-4" />
+                                    </button>
                                 </div>
                             )}
                         </div>
