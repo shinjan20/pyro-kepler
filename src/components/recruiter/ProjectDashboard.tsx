@@ -20,7 +20,6 @@ interface ProjectDashboardProps {
 
 const ProjectDashboard = ({ isOpen, onClose, project, onArchive, onAcceptCandidate, onDeclineCandidate, onMessageWorkingCandidate, onSendLetter, onCompleteProject, onRevertCandidate, initialTab = 'details' }: ProjectDashboardProps) => {
     const [activeTab, setActiveTab] = useState<'details' | 'applicants' | 'archived' | 'working'>(initialTab);
-    const [isConfirmingArchive, setIsConfirmingArchive] = useState(false);
     const [reviewingCandidate, setReviewingCandidate] = useState<StudentProfile | null>(null);
     const [reviewingWorkingCandidate, setReviewingWorkingCandidate] = useState<StudentProfile | null>(null);
 
@@ -101,7 +100,6 @@ const ProjectDashboard = ({ isOpen, onClose, project, onArchive, onAcceptCandida
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
             onClick={() => {
                 onClose();
-                setIsConfirmingArchive(false);
                 setReviewingCandidate(null);
             }}
         >
@@ -141,37 +139,12 @@ const ProjectDashboard = ({ isOpen, onClose, project, onArchive, onAcceptCandida
                             {/* Archive Project Button */}
                             {project.status !== 'completed' && onArchive && (
                                 <div className="relative mt-2 sm:mt-0 shrink-0">
-                                    {!isConfirmingArchive ? (
-                                        <button
-                                            onClick={() => setIsConfirmingArchive(true)}
-                                            className="text-sm font-medium px-4 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-colors border border-slate-200 dark:border-slate-700 shadow-sm"
-                                        >
-                                            Archive Project
-                                        </button>
-                                    ) : (
-                                        <div className="flex flex-col items-end gap-2 bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/50 p-3 rounded-xl shadow-lg absolute right-0 sm:right-auto sm:left-0 top-12 w-64 z-20 animate-in fade-in zoom-in-95 duration-200">
-                                            <p className="text-xs text-slate-700 dark:text-slate-300 font-medium mb-1">
-                                                Are you sure? Once archived, this project will no longer be visible to students for applying.
-                                            </p>
-                                            <div className="flex gap-2 w-full mt-1">
-                                                <button
-                                                    onClick={() => setIsConfirmingArchive(false)}
-                                                    className="flex-1 text-xs px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                                                >
-                                                    Cancel
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        onArchive(project.id);
-                                                        setIsConfirmingArchive(false);
-                                                    }}
-                                                    className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors"
-                                                >
-                                                    Confirm Archive
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
+                                    <button
+                                        onClick={() => onArchive(project.id)}
+                                        className="text-sm font-medium px-4 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-colors border border-slate-200 dark:border-slate-700 shadow-sm"
+                                    >
+                                        Archive Project
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -180,7 +153,6 @@ const ProjectDashboard = ({ isOpen, onClose, project, onArchive, onAcceptCandida
                     <button
                         onClick={() => {
                             onClose();
-                            setIsConfirmingArchive(false);
                             setReviewingCandidate(null);
                         }}
                         className="absolute top-4 sm:top-6 right-4 sm:right-8 text-slate-400 hover:text-slate-600 dark:hover:text-white bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 p-2 rounded-full transition-colors z-10"
