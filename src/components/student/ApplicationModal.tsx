@@ -3,18 +3,26 @@ import { X, Send, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import { MOCK_PROJECTS } from '../../constants';
 import { checkFormForProfanityAsync } from '../../utils/profanityFilter';
 import ProfanityWarningModal from '../ProfanityWarningModal';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
+import toast from 'react-hot-toast';
 
 interface ApplicationModalProps {
     isOpen: boolean;
     onClose: () => void;
-    projectId: number;
+    projectId: string | number; // Support string for UUIDs from Supabase
+    project?: any;
     onSubmitSuccess: () => void;
 }
 
-export default function ApplicationModal({ isOpen, onClose, projectId, onSubmitSuccess }: ApplicationModalProps) {
+export default function ApplicationModal({ isOpen, onClose, projectId, project: passedProject, onSubmitSuccess }: ApplicationModalProps) {
     if (!isOpen) return null;
 
-    const project = MOCK_PROJECTS.find(p => p.id === projectId);
+    const { userId } = useAuth();
+    // Assuming for now project details might come from MOCK_PROJECTS if not fetched dynamically here. Realistically, we might want to pass project details as props or fetch them.
+    // If it's a UUID, it won't be in MOCK_PROJECTS, but Projects.tsx currently filters from MOCK_PROJECTS.
+    // So this is partially mocked until Projects.tsx is connected to Supabase full.
+    const project = passedProject || MOCK_PROJECTS.find(p => p.id === projectId);
 
     const [coverLetter, setCoverLetter] = useState('');
     const [portfolioUrl, setPortfolioUrl] = useState('');
@@ -27,6 +35,11 @@ export default function ApplicationModal({ isOpen, onClose, projectId, onSubmitS
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+
+        if (!userId) {
+            setError('You must be logged in to apply.');
+            return;
+        }
 
         if (!coverLetter || !availability) {
             setError('Please fill out all required fields.');
@@ -42,24 +55,43 @@ export default function ApplicationModal({ isOpen, onClose, projectId, onSubmitS
             return;
         }
 
-        // Simulate API Application
-        setTimeout(() => {
-            setIsSubmitting(false);
+        try {
+            // Check if already applied (optional guard)
+            const { data: existingApp } = await supabase
+                .from('applications')
+                .select('id')
+                .eq('project_id', projectId)
+                .eq('student_id', userId)
+                .single();
 
-            // Save application to localStorage
-            const existingApps = JSON.parse(localStorage.getItem('pyroApplications') || '[]');
-            const newApp = {
-                id: Date.now(),
-                projectId,
-                coverLetter,
-                portfolioUrl,
-                availability,
-                appliedAt: new Date().toISOString()
-            };
-            localStorage.setItem('pyroApplications', JSON.stringify([...existingApps, newApp]));
+            if (existingApp) {
+                setError('You have already applied to this project.');
+                setIsSubmitting(false);
+                return;
+            }
 
+            const { error: insertError } = await supabase
+                .from('applications')
+                .insert([{
+                    project_id: projectId,
+                    student_id: userId,
+                    cover_letter: coverLetter,
+                    portfolio_url: portfolioUrl,
+                    availability: availability,
+                    status: 'pending'
+                }]);
+
+            if (insertError) throw insertError;
+
+            toast.success('Application submitted successfully!');
             onSubmitSuccess();
-        }, 1500);
+        } catch (err: any) {
+            console.error('Application error:', err);
+            toast.error(err.message || 'Failed to submit application.');
+            setError(err.message || 'Failed to submit application.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (

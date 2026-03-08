@@ -8,60 +8,236 @@ import ProjectDashboard from '../components/recruiter/ProjectDashboard';
 import MessagingHub from '../components/recruiter/MessagingHub';
 import ConfirmModal from '../components/ConfirmModal';
 import CollaboratedTalentCard from '../components/recruiter/CollaboratedTalentCard';
-import { MOCK_PROFILES, MOCK_COLLABORATED_TALENT, DOMAINS } from '../constants';
+import { DOMAINS } from '../constants';
 import CelebrationModal from '../components/CelebrationModal';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
-const MOCK_COLLEGES = Array.from(new Set(MOCK_PROFILES.map(p => p.college)));
+
 
 const RecruiterDashboard = () => {
-    const { userName } = useAuth();
+    const { userName, userId } = useAuth();
     const [activeTab, setActiveTab] = useState<'projects' | 'talent' | 'collaborated' | 'messages'>('projects');
     const [targetMessageThreadId, setTargetMessageThreadId] = useState<string | null>(null);
-    const [activeProjects, setActiveProjects] = useState<any[]>(() => {
-        const saved = localStorage.getItem('pyroActiveProjects');
-        if (saved) return JSON.parse(saved);
-        return [];
-    });
-    const [archivedProjects, setArchivedProjects] = useState<any[]>(() => {
-        const saved = localStorage.getItem('pyroArchivedProjects');
-        if (saved) return JSON.parse(saved);
-        return [];
-    });
-    const [threads, setThreads] = useState<any[]>(() => {
-        const saved = localStorage.getItem('pyroRecruiterThreads');
-        if (saved) return JSON.parse(saved);
-        return [];
-    });
-    const [collaboratedTalent, setCollaboratedTalent] = useState<any[]>(() => {
-        const saved = localStorage.getItem('pyroCollaboratedTalent');
-        if (saved) return JSON.parse(saved);
-        return MOCK_COLLABORATED_TALENT;
-    });
+    const [activeProjects, setActiveProjects] = useState<any[]>([]);
+    const [archivedProjects, setArchivedProjects] = useState<any[]>([]);
+    const [threads, setThreads] = useState<any[]>([]);
+    const [collaboratedTalent, setCollaboratedTalent] = useState<any[]>([]);
 
+    // Discover Talent State
+    const [talentProfiles, setTalentProfiles] = useState<any[]>([]);
+    const [colleges, setColleges] = useState<string[]>([]);
 
-
-    // Effect to persist active projects when they change
+    // Fetch projects and their applications from Supabase
     useEffect(() => {
-        if (activeProjects.length > 0) {
-            localStorage.setItem('pyroActiveProjects', JSON.stringify(activeProjects));
-        }
-    }, [activeProjects]);
+        const fetchRecruiterData = async () => {
+            if (!userId) return;
 
-    // Effect to persist archived projects when they change
-    useEffect(() => {
-        if (archivedProjects.length > 0) {
-            localStorage.setItem('pyroArchivedProjects', JSON.stringify(archivedProjects));
-        }
-    }, [archivedProjects]);
+            try {
+                // Fetch all projects created by this recruiter
+                const { data: projectsData, error: projectsError } = await supabase
+                    .from('projects')
+                    .select('*')
+                    .eq('recruiter_id', userId)
+                    .order('created_at', { ascending: false });
 
-    // Effect to persist collaborated talent when they change
+                if (projectsError) throw projectsError;
+
+                // Fetch all applications relevant to these projects
+                const projectIds = projectsData?.map(p => p.id) || [];
+
+                let applicationsData: any[] = [];
+                if (projectIds.length > 0) {
+                    const { data: apps, error: appsError } = await supabase
+                        .from('applications')
+                        .select(`
+                            *,
+                            profiles:student_id (
+                                id, name, photo_url, college, domain, github_url, linkedin_url, portfolio_url, skills, phone
+                            )
+                        `)
+                        .in('project_id', projectIds);
+
+                    if (appsError) throw appsError;
+                    if (apps) applicationsData = apps;
+                }
+
+                // Map the structured data back into the shape the dashboard expects
+                const formattedProjects = projectsData?.map(project => {
+                    const projectApps = applicationsData.filter(app => app.project_id === project.id);
+
+                    const formatProfile = (app: any) => ({
+                        id: app.student_id,
+                        name: app.profiles?.name || 'Unknown',
+                        photoUrl: app.profiles?.photo_url || null,
+                        college: app.profiles?.college || 'Unknown College',
+                        domain: app.profiles?.domain || 'Unknown Domain',
+                        applicationStatus: app.status,
+                        coverLetter: app.cover_letter,
+                        availability: app.availability
+                    });
+
+                    return {
+                        id: project.id,
+                        role: project.role,
+                        domain: project.domain,
+                        objective: project.objective,
+                        expectations: project.expectations,
+                        positions: project.positions,
+                        tenure: project.tenure,
+                        remuneration: project.remuneration,
+                        status: project.status,
+                        candidates: [],
+                        appliedCandidates: projectApps.filter(a => a.status === 'pending').map(formatProfile),
+                        workingCandidates: projectApps.filter(a => a.status === 'accepted').map(formatProfile),
+                        archivedCandidates: projectApps.filter(a => ['rejected', 'completed'].includes(a.status)).map(formatProfile)
+                    };
+                }) || [];
+
+                const collabTalentList: any[] = [];
+                applicationsData.filter(app => app.status === 'completed').forEach(app => {
+                    const project = projectsData?.find(p => p.id === app.project_id);
+                    collabTalentList.push({
+                        id: `collab-${app.id}`,
+                        candidateId: app.student_id,
+                        projectId: app.project_id,
+                        name: app.profiles?.name || 'Unknown',
+                        photoUrl: app.profiles?.photo_url || null,
+                        projectName: project?.role || 'Project',
+                        domain: app.profiles?.domain || 'Unknown',
+                        rating: 0,
+                        review: ''
+                    });
+                });
+                setCollaboratedTalent(collabTalentList);
+
+                setActiveProjects(formattedProjects.filter(p => p.status === 'active'));
+                setArchivedProjects(formattedProjects.filter(p => ['completed', 'archived'].includes(p.status)));
+            } catch (err) {
+                console.error("Error fetching dashboard data:", err);
+                toast.error("Failed to load your projects.");
+            }
+        };
+
+        fetchRecruiterData();
+    }, [userId]);
+
+    // Fetch and subscribe to Message Threads
     useEffect(() => {
-        if (collaboratedTalent.length > 0) {
-            localStorage.setItem('pyroCollaboratedTalent', JSON.stringify(collaboratedTalent));
-        }
+        let isMounted = true;
+
+        const fetchThreads = async () => {
+            if (!userId) return;
+
+            try {
+                // Get all projects for this recruiter first to know which threads are relevant
+                const { data: userProjects } = await supabase
+                    .from('projects')
+                    .select('id')
+                    .eq('recruiter_id', userId);
+
+                const projectIds = userProjects?.map(p => p.id) || [];
+                if (projectIds.length === 0) return;
+
+                const { data: threadsData, error } = await supabase
+                    .from('message_threads')
+                    .select(`
+                        id,
+                        project_id,
+                        student_id,
+                        status,
+                        created_at,
+                        updated_at,
+                        profiles!student_id (
+                            name,
+                            photo_url,
+                            domain,
+                            college
+                        ),
+                        messages (
+                            id,
+                            sender_id,
+                            content,
+                            attached_file_name,
+                            created_at
+                        )
+                    `)
+                    .in('project_id', projectIds)
+                    .order('updated_at', { ascending: false });
+
+                if (error) throw error;
+
+                if (isMounted && threadsData) {
+                    const mappedThreads = threadsData.map((t: any) => ({
+                        id: t.id,
+                        projectId: t.project_id,
+                        candidateId: t.student_id,
+                        candidateName: t.profiles?.name || 'Applicant',
+                        candidatePhotoUrl: t.profiles?.photo_url || '',
+                        candidateDomain: t.profiles?.domain || 'Candidate',
+                        candidateCollege: t.profiles?.college || '',
+                        status: t.status,
+                        messages: (t.messages || [])
+                            .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                            .map((m: any) => ({
+                                id: m.id,
+                                senderId: m.sender_id,
+                                text: m.content,
+                                attachedFileName: m.attached_file_name,
+                                timestamp: m.created_at
+                            }))
+                    }));
+                    setThreads(mappedThreads);
+                }
+            } catch (err) {
+                console.error("Error fetching message threads:", err);
+            }
+        };
+
+        fetchThreads();
+
+        // Subscribe to messages table inserts
+        const channel = supabase.channel('recruiter_messages')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, fetchThreads)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'message_threads' }, fetchThreads)
+            .subscribe();
+
+        return () => {
+            isMounted = false;
+            supabase.removeChannel(channel);
+        };
+    }, [userId]);
+
+    // Effect to persist collaborated talent when they change (keep temporarily until we migrate Collaborated feature)
+    useEffect(() => {
+        // This useEffect is no longer needed as collaborated talent is fetched from DB
+        // if (collaboratedTalent.length > 0) {
+        //     localStorage.setItem('pyroCollaboratedTalent', JSON.stringify(collaboratedTalent));
+        // }
     }, [collaboratedTalent]);
+
+    useEffect(() => {
+        const fetchProfiles = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('role', 'student');
+
+                if (error) throw error;
+
+                if (data) {
+                    setTalentProfiles(data);
+                    const uniqueColleges = Array.from(new Set(data.map(p => p.college || 'Unknown College').filter(Boolean))) as string[];
+                    setColleges(uniqueColleges);
+                }
+            } catch (err) {
+                console.error("Error fetching talent profiles:", err);
+            }
+        };
+        fetchProfiles();
+    }, []);
 
     const location = useLocation();
 
@@ -111,35 +287,97 @@ const RecruiterDashboard = () => {
     const [filterCollege, setFilterCollege] = useState<string>('All');
     const [sortOption, setSortOption] = useState<string>('Completed Projects (High to Low)');
 
-    const filteredAndSortedProfiles = MOCK_PROFILES.filter(profile => {
-        const domainMatch = filterDomain === 'All' || profile.domain === filterDomain;
-        const collegeMatch = filterCollege === 'All' || profile.college === filterCollege;
+    const filteredAndSortedProfiles = talentProfiles.filter(profile => {
+        const profileDomain = profile.domain || 'Unknown Domain';
+        const profileCollege = profile.college || 'Unknown College';
+        const domainMatch = filterDomain === 'All' || profileDomain === filterDomain;
+        const collegeMatch = filterCollege === 'All' || profileCollege === filterCollege;
         return domainMatch && collegeMatch;
     }).sort((a, b) => {
-        if (sortOption === 'Completed Projects (High to Low)') return b.completedProjects - a.completedProjects;
-        if (sortOption === 'Completed Projects (Low to High)') return a.completedProjects - b.completedProjects;
+        // We might not have completedProjects column easily without joins, but keeping consistent for now if using mock structure
+        const aCompleted = a.completedProjects || 0;
+        const bCompleted = b.completedProjects || 0;
+        if (sortOption === 'Completed Projects (High to Low)') return bCompleted - aCompleted;
+        if (sortOption === 'Completed Projects (Low to High)') return aCompleted - bCompleted;
         if (sortOption === 'Name (A-Z)') return a.name.localeCompare(b.name);
         return 0; // default
     });
 
-    const handlePostProject = (projectData: any) => {
-        if (editingProjectData) {
-            // Update existing project
-            setActiveProjects(prev => prev.map(p => p.id === editingProjectData.id ? { ...p, ...projectData } : p));
-        } else {
-            // Create new project mapping with default arrays
-            const newProject = {
-                ...projectData,
-                id: Date.now().toString(),
-                postedAt: new Date().toISOString(),
-                candidates: [],
-                appliedCandidates: [],
-                workingCandidates: [],
-                archivedCandidates: []
-            };
-            setActiveProjects(prev => [newProject, ...prev]);
+    const handlePostProject = async (projectData: any) => {
+        if (!userId) return;
+
+        try {
+            if (editingProjectData) {
+                // Update existing project in Supabase
+                const { error } = await supabase
+                    .from('projects')
+                    .update({
+                        role: projectData.role,
+                        domain: projectData.domain,
+                        objective: projectData.objective,
+                        expectations: projectData.expectations,
+                        positions: projectData.positions,
+                        tenure: projectData.tenure,
+                        remuneration: projectData.remuneration
+                    })
+                    .eq('id', editingProjectData.id)
+                    .eq('recruiter_id', userId);
+
+                if (error) throw error;
+
+                // Update local state temporarily for snappy UI
+                setActiveProjects(prev => prev.map(p => p.id === editingProjectData.id ? { ...p, ...projectData } : p));
+                toast.success('Project updated successfully!');
+            } else {
+                // Create new project in Supabase
+                const { data: newDbProject, error } = await supabase
+                    .from('projects')
+                    .insert([{
+                        recruiter_id: userId,
+                        role: projectData.role,
+                        domain: projectData.domain,
+                        objective: projectData.objective,
+                        expectations: projectData.expectations,
+                        positions: projectData.positions,
+                        tenure: projectData.tenure,
+                        remuneration: projectData.remuneration,
+                        status: 'active'
+                    }])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                // Also fetch 3 random student UUID profiles to create mock applications so UI doesn't look empty
+                const { data: randomStudents } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('role', 'student')
+                    .limit(3);
+
+                if (randomStudents && randomStudents.length > 0) {
+                    const applicationsToInsert = randomStudents.map(student => ({
+                        project_id: newDbProject.id,
+                        student_id: student.id,
+                        cover_letter: "I am very interested in this role!",
+                        availability: "full_time",
+                        status: 'pending'
+                    }));
+
+                    await supabase.from('applications').insert(applicationsToInsert);
+                }
+
+                toast.success('Project posted successfully!');
+
+                // Triggers a dashboard refetch to pull in the new project and its generated applications
+                window.location.reload();
+            }
+        } catch (err: any) {
+            console.error("Error saving project:", err);
+            toast.error(err.message || 'Failed to save project');
+        } finally {
+            setEditingProjectData(null);
         }
-        setEditingProjectData(null);
     };
 
     const handleEditProjectClick = (e: React.MouseEvent, project: any) => {
@@ -164,379 +402,461 @@ const RecruiterDashboard = () => {
         setIsProjectDetailsModalOpen(false); // Close details modal when checking archive to let ConfirmModal sit top 
     };
 
-    const handleArchiveProject = () => {
-        if (!confirmingArchiveId) return;
+    const handleArchiveProject = async () => {
+        if (!confirmingArchiveId || !userId) return;
 
-        const projectToArchive = activeProjects.find(p => p.id === confirmingArchiveId);
-        if (projectToArchive) {
-            setActiveProjects(activeProjects.filter(p => p.id !== confirmingArchiveId));
-            setArchivedProjects([{ ...projectToArchive, status: 'completed' }, ...archivedProjects]);
-            setIsProjectDetailsModalOpen(false); // Close the details modal if open
-            setConfirmingArchiveId(null); // Close the confirm modal
+        try {
+            const projectToArchive = activeProjects.find(p => p.id === confirmingArchiveId);
+            if (projectToArchive) {
+                // Update project status to completed in Supabase
+                const { error } = await supabase
+                    .from('projects')
+                    .update({ status: 'completed' })
+                    .eq('id', confirmingArchiveId)
+                    .eq('recruiter_id', userId);
 
-            // Check if there are candidate to send letters to
-            const hasCandidates = projectToArchive.workingCandidates && projectToArchive.workingCandidates.length > 0;
+                if (error) throw error;
 
-            if (hasCandidates) {
-                setCelebrationData({
-                    title: 'Project Completed!',
-                    message: `Congratulations on archiving "${projectToArchive.role}"! You have candidates pending completion letters. Sending them now ensures a good experience.`,
-                    primaryActionText: 'Send Letters to All Candidates',
-                    children: (
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
-                            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center justify-between">
-                                Candidates to notify
-                                <span className="bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-400 py-0.5 px-2 rounded-full text-xs">
-                                    {projectToArchive.workingCandidates?.length}
-                                </span>
-                            </h4>
-                            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                                {projectToArchive.workingCandidates?.map((candidate: any) => (
-                                    <div key={candidate.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800 shadow-sm">
-                                        {candidate.photoUrl ? (
-                                            <img src={candidate.photoUrl} alt={candidate.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
-                                        ) : (
-                                            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 text-xs shrink-0">
-                                                {candidate.name.charAt(0)}
+                // Update local state
+                setActiveProjects(activeProjects.filter(p => p.id !== confirmingArchiveId));
+                setArchivedProjects([{ ...projectToArchive, status: 'completed' }, ...archivedProjects]);
+                setIsProjectDetailsModalOpen(false);
+                setConfirmingArchiveId(null);
+
+                // Check if there are candidate to send letters to
+                const hasCandidates = projectToArchive.workingCandidates && projectToArchive.workingCandidates.length > 0;
+
+                if (hasCandidates) {
+                    setCelebrationData({
+                        title: 'Project Completed!',
+                        message: `Congratulations on archiving "${projectToArchive.role}"! You have candidates pending completion letters. Sending them now ensures a good experience.`,
+                        primaryActionText: 'Send Letters to All Candidates',
+                        children: (
+                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
+                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center justify-between">
+                                    Candidates to notify
+                                    <span className="bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-400 py-0.5 px-2 rounded-full text-xs">
+                                        {projectToArchive.workingCandidates?.length}
+                                    </span>
+                                </h4>
+                                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                    {projectToArchive.workingCandidates?.map((candidate: any) => (
+                                        <div key={candidate.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800 shadow-sm">
+                                            {candidate.photoUrl ? (
+                                                <img src={candidate.photoUrl} alt={candidate.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                                            ) : (
+                                                <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 text-xs shrink-0">
+                                                    {candidate.name.charAt(0)}
+                                                </div>
+                                            )}
+                                            <div className="min-w-0 flex-1">
+                                                <div className="text-sm font-bold text-slate-900 dark:text-white truncate">{candidate.name}</div>
+                                                <div className="text-[10px] text-slate-500 truncate">{candidate.domain}</div>
                                             </div>
-                                        )}
-                                        <div className="min-w-0 flex-1">
-                                            <div className="text-sm font-bold text-slate-900 dark:text-white truncate">{candidate.name}</div>
-                                            <div className="text-[10px] text-slate-500 truncate">{candidate.domain}</div>
+                                            <div className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded">
+                                                <FileText className="w-3 h-3" /> Pending Letter
+                                            </div>
                                         </div>
-                                        <div className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded">
-                                            <FileText className="w-3 h-3" /> Pending Letter
-                                        </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    ),
-                    onPrimaryAction: () => {
-                        projectToArchive.workingCandidates?.forEach((candidate: any) => {
-                            // 1. Move them to Collaborated Talent / Completed Status
-                            handleCompleteProject(projectToArchive.id, candidate.id);
-                            // 2. Send the completion letter
-                            handleSendLetter(projectToArchive.id, candidate.id, 'completion', `Congratulations on successfully completing the ${projectToArchive.role} project! Please find your completion letter attached.\n\nBest regards,\n${userName}`);
-                        });
-                        setShowCelebration(false);
-
-                        // Show alert
-                        setTimeout(() => {
-                            toast.success('Completion letters have been generated and sent to all associated candidates.');
-                        }, 500);
-                    }
-                });
-            } else {
-                setCelebrationData({
-                    title: 'Project Archived',
-                    message: `Sorry you could not find any candidate for "${projectToArchive.role}" 😔, but you will find the right talent next time! 🌟`,
-                    hideConfetti: true,
-                    icon: <span className="text-5xl text-center mb-1 drop-shadow-md">😔</span>
-                });
+                        ),
+                        onPrimaryAction: () => {
+                            projectToArchive.workingCandidates?.forEach((candidate: any) => {
+                                handleCompleteProject(projectToArchive.id, candidate.id);
+                                handleSendLetter(projectToArchive.id, candidate.id, 'completion', `Congratulations on successfully completing the ${projectToArchive.role} project! Please find your completion letter attached.\n\nBest regards,\n${userName}`);
+                            });
+                            setShowCelebration(false);
+                            setTimeout(() => {
+                                toast.success('Completion letters have been generated and sent to all associated candidates.');
+                            }, 500);
+                        }
+                    });
+                } else {
+                    setCelebrationData({
+                        title: 'Project Archived',
+                        message: `Sorry you could not find any candidate for "${projectToArchive.role}" 😔, but you will find the right talent next time! 🌟`,
+                        hideConfetti: true,
+                        icon: <span className="text-5xl text-center mb-1 drop-shadow-md">😔</span>
+                    });
+                }
+                setShowCelebration(true);
             }
-            setShowCelebration(true);
+        } catch (err: any) {
+            console.error("Error archiving project:", err);
+            toast.error("Failed to archive project.");
         }
     };
 
-    const handleAcceptCandidate = (projectId: string, candidateId: string) => {
+    const handleAcceptCandidate = async (projectId: string, candidateId: string) => {
         const project = activeProjects.find(p => p.id === projectId);
         if (project && project.workingCandidates && project.workingCandidates.length >= (project.positions || 1)) {
             toast.error('Cannot accept more candidates. All positions are filled for this project.');
             return;
         }
 
-        let acceptedCandidate: any = null;
+        try {
+            // Update application in Supabase
+            const { error } = await supabase
+                .from('applications')
+                .update({ status: 'accepted' })
+                .eq('project_id', projectId)
+                .eq('student_id', candidateId);
 
-        setActiveProjects(prev => prev.map(p => {
-            if (p.id === projectId) {
-                const candidate = p.appliedCandidates?.find((c: any) => c.id === candidateId);
-                if (candidate) acceptedCandidate = candidate;
+            if (error) throw error;
 
-                const updatedCandidates = p.appliedCandidates.map((c: any) =>
-                    c.id === candidateId ? { ...c, applicationStatus: 'accepted' } : c
-                );
-                const updatedProject = { ...p, appliedCandidates: updatedCandidates };
-                if (selectedProject?.id === projectId) setSelectedProject(updatedProject);
-                return updatedProject;
-            }
-            return p;
-        }));
+            let acceptedCandidate: any = null;
 
-        // Create a new thread if it doesn't exist for this candidate
-        let threadIdToOpen = null;
-        setThreads(prev => {
-            const exists = prev.find(t => t.candidateId === candidateId);
-            if (exists) {
-                threadIdToOpen = exists.id;
-                const newMessage = {
-                    id: Date.now().toString() + '1',
-                    senderId: 'recruiter',
-                    text: `Hi ${acceptedCandidate?.name || 'Candidate'}, your application for this project has been accepted! Let's discuss the next steps.`,
-                    timestamp: new Date().toISOString()
-                };
-                const updated = prev.map(t =>
-                    t.id === exists.id
-                        ? { ...t, projectId, messages: [...t.messages, newMessage] } // Update the project association and add the accept message
-                        : t
-                );
-                localStorage.setItem('pyroRecruiterThreads', JSON.stringify(updated));
-                return updated;
-            } else if (acceptedCandidate) {
-                const newId = Date.now().toString();
-                threadIdToOpen = newId;
-                const newThread = {
-                    id: newId,
-                    projectId,
-                    candidateId,
-                    status: 'active',
-                    messages: [
-                        {
-                            id: Date.now().toString() + '1',
-                            senderId: 'recruiter',
-                            text: `Hi ${acceptedCandidate.name}, your application for this project has been accepted! Let's discuss the next steps.`,
-                            timestamp: new Date().toISOString()
-                        }
-                    ]
-                };
-                const updated = [newThread, ...prev];
-                localStorage.setItem('pyroRecruiterThreads', JSON.stringify(updated));
-                return updated;
-            }
-            return prev;
-        });
+            setActiveProjects(prev => prev.map(p => {
+                if (p.id === projectId) {
+                    const candidate = p.appliedCandidates?.find((c: any) => c.id === candidateId);
+                    if (candidate) acceptedCandidate = candidate;
 
-        if (acceptedCandidate) {
-            setCelebrationData({
-                title: 'Accepted for Interview!',
-                message: `${acceptedCandidate.name} has been accepted for an interview. You can now message the candidate to schedule the recruitment process.`
-            });
-            setShowCelebration(true);
-        }
-
-        if (threadIdToOpen) setTargetMessageThreadId(threadIdToOpen);
-        // Close modal and switch to messages tab
-        setIsProjectDetailsModalOpen(false);
-        setActiveTab('messages');
-    };
-
-    const handleDeclineCandidate = (projectId: string, candidateId: string) => {
-        setActiveProjects(prev => prev.map(p => {
-            if (p.id === projectId) {
-                const candidate = p.appliedCandidates?.find((c: any) => c.id === candidateId);
-                if (candidate) {
-                    const updatedProject = {
-                        ...p,
-                        appliedCandidates: p.appliedCandidates.filter((c: any) => c.id !== candidateId),
-                        archivedCandidates: [...(p.archivedCandidates || []), candidate]
-                    };
+                    const updatedCandidates = p.appliedCandidates.map((c: any) =>
+                        c.id === candidateId ? { ...c, applicationStatus: 'accepted' } : c
+                    );
+                    const updatedProject = { ...p, appliedCandidates: updatedCandidates };
                     if (selectedProject?.id === projectId) setSelectedProject(updatedProject);
                     return updatedProject;
                 }
+                return p;
+            }));
+
+            // Handle thread creation natively
+            let threadIdToOpen = null;
+            if (acceptedCandidate) {
+                const { data: existingThread } = await supabase
+                    .from('message_threads')
+                    .select('id')
+                    .eq('project_id', projectId)
+                    .eq('student_id', candidateId)
+                    .single();
+
+                if (existingThread) {
+                    threadIdToOpen = existingThread.id;
+                } else {
+                    const { data: newThread } = await supabase
+                        .from('message_threads')
+                        .insert([{ project_id: projectId, student_id: candidateId, status: 'accepted' }])
+                        .select('id').single();
+                    if (newThread) threadIdToOpen = newThread.id;
+                }
+
+                if (threadIdToOpen && userId) {
+                    await supabase.from('messages').insert([{
+                        thread_id: threadIdToOpen,
+                        sender_id: userId,
+                        content: `Hi ${acceptedCandidate.name}, your application for this project has been accepted! Let's discuss the next steps.`
+                    }]);
+                    setTargetMessageThreadId(threadIdToOpen);
+                }
+
+                setCelebrationData({
+                    title: 'Accepted for Interview!',
+                    message: `${acceptedCandidate.name} has been accepted for an interview. You can now message the candidate to schedule the recruitment process.`
+                });
+                setShowCelebration(true);
             }
-            return p;
-        }));
+
+            if (threadIdToOpen) setTargetMessageThreadId(threadIdToOpen);
+            setIsProjectDetailsModalOpen(false);
+            setActiveTab('messages');
+        } catch (err: any) {
+            console.error("Error accepting candidate:", err);
+            toast.error("Failed to accept candidate");
+        }
     };
 
-    const handleMessageWorkingCandidate = (projectId: string, candidateId: string) => {
+    const handleDeclineCandidate = async (projectId: string, candidateId: string) => {
+        try {
+            // Update application in Supabase
+            const { error } = await supabase
+                .from('applications')
+                .update({ status: 'rejected' })
+                .eq('project_id', projectId)
+                .eq('student_id', candidateId);
+
+            if (error) throw error;
+
+            setActiveProjects(prev => prev.map(p => {
+                if (p.id === projectId) {
+                    const candidate = p.appliedCandidates?.find((c: any) => c.id === candidateId);
+                    if (candidate) {
+                        const updatedProject = {
+                            ...p,
+                            appliedCandidates: p.appliedCandidates.filter((c: any) => c.id !== candidateId),
+                            archivedCandidates: [...(p.archivedCandidates || []), { ...candidate, applicationStatus: 'rejected' }]
+                        };
+                        if (selectedProject?.id === projectId) setSelectedProject(updatedProject);
+                        return updatedProject;
+                    }
+                }
+                return p;
+            }));
+        } catch (err: any) {
+            console.error("Error declining candidate:", err);
+            toast.error("Failed to decline candidate");
+        }
+    };
+
+    const handleMessageWorkingCandidate = async (projectId: string, candidateId: string) => {
         // Ensure a thread exists for this candidate
         let threadIdToOpen = null;
-        setThreads(prev => {
-            const exists = prev.find(t => t.candidateId === candidateId);
-            if (exists) {
-                threadIdToOpen = exists.id;
-                // Update the project ID to the latest engagement context
-                return prev.map(t =>
-                    t.id === exists.id ? { ...t, projectId } : t
-                );
-            } else {
-                const candidate = activeProjects.find(p => p.id === projectId)?.workingCandidates?.find((c: any) => c.id === candidateId);
-                if (candidate) {
-                    const newId = Date.now().toString();
-                    threadIdToOpen = newId;
-                    const newThread = {
-                        id: newId,
-                        projectId,
-                        candidateId,
-                        status: 'selected', // Status is selected because they are working
-                        messages: []
-                    };
-                    const updated = [newThread, ...prev];
-                    localStorage.setItem('pyroRecruiterThreads', JSON.stringify(updated));
-                    return updated;
-                }
-            }
-            return prev;
-        });
+        const { data: existingThread } = await supabase
+            .from('message_threads')
+            .select('id')
+            .eq('project_id', projectId)
+            .eq('student_id', candidateId)
+            .single();
+
+        if (existingThread) {
+            threadIdToOpen = existingThread.id;
+        } else {
+            const { data: newThread } = await supabase
+                .from('message_threads')
+                .insert([{ project_id: projectId, student_id: candidateId, status: 'completed' }])
+                .select('id').single();
+            if (newThread) threadIdToOpen = newThread.id;
+        }
 
         if (threadIdToOpen) setTargetMessageThreadId(threadIdToOpen);
         setIsProjectDetailsModalOpen(false);
         setActiveTab('messages');
     };
 
-    const handleSendLetter = (projectId: string, candidateId: string, _type: 'joining' | 'completion' | 'discovery', content: string) => {
+    const handleSendLetter = async (projectId: string, candidateId: string, _type: 'joining' | 'completion' | 'discovery', content: string) => {
         let newOrExistingThreadId: string | null = null;
-        setThreads(prev => {
-            // Find existing thread by candidateId primarily, avoiding duplicates
-            const existingThread = prev.find(t => t.candidateId === candidateId);
-            const newMessage = {
-                id: Date.now().toString(),
-                senderId: 'recruiter',
-                text: content,
-                attachedFileName: _type === 'completion' ? 'Completion Letter.pdf' : _type === 'joining' ? 'Joining Letter.pdf' : undefined,
-                timestamp: new Date().toISOString()
-            };
+
+        // Prevent crashes for mock data (like Collaborated Talent fallback)
+        if (projectId === 'collab-project' || !projectId.includes('-')) {
+            toast.error("Cannot message a mock candidate from the legacy database.");
+            return;
+        }
+
+        try {
+            // Check if thread exists
+            const { data: existingThread, error: existingThreadError } = await supabase
+                .from('message_threads')
+                .select('id')
+                .eq('project_id', projectId)
+                .eq('student_id', candidateId)
+                .maybeSingle();
+
+            if (existingThreadError) {
+                console.error("Error checking existing thread:", existingThreadError);
+            }
 
             if (existingThread) {
                 newOrExistingThreadId = existingThread.id;
-                const updated = prev.map(t =>
-                    t.id === existingThread.id
-                        ? { ...t, projectId, status: _type === 'completion' ? 'selected' : t.status, messages: [...t.messages, newMessage] } // update thread context to new project
-                        : t
-                );
-                localStorage.setItem('pyroRecruiterThreads', JSON.stringify(updated));
-                return updated;
-            } else {
-                const newId = Date.now().toString();
-                newOrExistingThreadId = newId;
-                const newThread = {
-                    id: newId,
-                    projectId,
-                    candidateId,
-                    status: 'active',
-                    messages: [newMessage]
-                };
-                const updated = [newThread, ...prev];
-                localStorage.setItem('pyroRecruiterThreads', JSON.stringify(updated));
-                return updated;
-            }
-        });
 
-        if (_type === 'discovery') {
-            toast.success('Your message has been sent to the candidate successfully!');
-            if (newOrExistingThreadId) {
-                setTargetMessageThreadId(newOrExistingThreadId);
-                setActiveTab('messages');
+                // If it's a completion letter, we might want to update thread status to 'selected'
+                if (_type === 'completion' || _type === 'joining') {
+                    await supabase
+                        .from('message_threads')
+                        .update({ status: 'completed' })
+                        .eq('id', newOrExistingThreadId);
+                }
+            } else {
+                // Create new thread
+                const { data: newThread, error: threadError } = await supabase
+                    .from('message_threads')
+                    .insert([{
+                        project_id: projectId,
+                        student_id: candidateId,
+                        recruiter_id: userId,
+                        status: 'accepted'
+                    }])
+                    .select('id')
+                    .single();
+
+                if (threadError) {
+                    console.error("Thread creation error:", threadError);
+                    throw threadError;
+                }
+                if (newThread) newOrExistingThreadId = newThread.id;
             }
-        } else if (_type === 'completion' || _type === 'joining') {
-            if (newOrExistingThreadId) {
-                setTargetMessageThreadId(newOrExistingThreadId);
-                setActiveTab('messages');
+
+            if (newOrExistingThreadId && userId) {
+                // Insert the message
+                const { error: messageError } = await supabase
+                    .from('messages')
+                    .insert([{
+                        thread_id: newOrExistingThreadId,
+                        sender_id: userId,
+                        content: content,
+                        attached_file_name: _type === 'completion' ? 'Completion Letter.pdf' : _type === 'joining' ? 'Joining Letter.pdf' : null
+                    }]);
+
+                if (messageError) throw messageError;
+
+                // We don't need to manually setThreads here since the global useEffect subscription will catch it
             }
+
+            if (_type === 'discovery') {
+                toast.success('Your message has been sent to the candidate successfully!');
+                if (newOrExistingThreadId) {
+                    setTargetMessageThreadId(newOrExistingThreadId);
+                    setActiveTab('messages');
+                }
+            } else if (_type === 'completion' || _type === 'joining') {
+                if (newOrExistingThreadId) {
+                    setTargetMessageThreadId(newOrExistingThreadId);
+                    setActiveTab('messages');
+                }
+            }
+        } catch (err: any) {
+            console.error('Error sending message:', err);
+            toast.error('Failed to send message: ' + err.message);
         }
     };
 
-    const handleCompleteProject = (projectId: string, candidateId: string) => {
-        setActiveProjects(prev => prev.map(p => {
-            if (p.id === projectId) {
-                const candidate = p.workingCandidates?.find((c: any) => c.id === candidateId);
-                if (candidate) {
-                    const collabEntry = {
-                        id: `collab-${Date.now()}`,
-                        candidateId: candidate.id,
-                        name: candidate.name,
-                        photoUrl: candidate.photoUrl,
-                        projectName: p.role,
-                        domain: candidate.domain,
-                        rating: 0,
-                        review: ''
-                    };
-                    setCollaboratedTalent(prevCollab => [collabEntry, ...prevCollab]);
+    const handleCompleteProject = async (projectId: string, candidateId: string) => {
+        try {
+            // Update application in Supabase
+            const { error } = await supabase
+                .from('applications')
+                .update({ status: 'completed' })
+                .eq('project_id', projectId)
+                .eq('student_id', candidateId);
 
-                    const updatedProject = {
-                        ...p,
-                        workingCandidates: p.workingCandidates.filter((c: any) => c.id !== candidateId),
-                        archivedCandidates: [...(p.archivedCandidates || []), { ...candidate, applicationStatus: 'completed' }]
-                    };
-                    if (selectedProject?.id === projectId) setSelectedProject(updatedProject);
-                    return updatedProject;
-                }
-            }
-            return p;
-        }));
-    };
+            if (error) throw error;
 
-    const handleRevertCandidate = (projectId: string, candidateId: string) => {
-        setActiveProjects(prev => prev.map(p => {
-            if (p.id === projectId) {
-                const candidate = p.archivedCandidates?.find((c: any) => c.id === candidateId);
-                if (candidate) {
-                    const updatedProject = {
-                        ...p,
-                        archivedCandidates: p.archivedCandidates.filter((c: any) => c.id !== candidateId),
-                        appliedCandidates: [...(p.appliedCandidates || []), { ...candidate, applicationStatus: 'pending' }]
-                    };
-                    if (selectedProject?.id === projectId) setSelectedProject(updatedProject);
-                    return updatedProject;
-                }
-            }
-            return p;
-        }));
-    };
-
-    const handleCandidateMessageStatusChange = (projectId: string, candidateId: string, status: 'selected' | 'rejected') => {
-        setThreads(prev => {
-            const updated = prev.map(t => {
-                if (t.projectId === projectId && t.candidateId === candidateId) {
-                    return { ...t, status };
-                }
-                return t;
-            });
-            localStorage.setItem('pyroRecruiterThreads', JSON.stringify(updated));
-            return updated;
-        });
-
-        setActiveProjects(prev => prev.map(p => {
-            if (p.id === projectId) {
-                // Find the candidate (they should be in appliedCandidates with applicationStatus: 'accepted', or perhaps working/archived already)
-                // Actually they might be in `appliedCandidates` 
-                const candidate = p.appliedCandidates?.find((c: any) => c.id === candidateId) ||
-                    p.workingCandidates?.find((c: any) => c.id === candidateId) ||
-                    p.archivedCandidates?.find((c: any) => c.id === candidateId) ||
-                    MOCK_PROFILES.find((c: any) => c.id === candidateId); // fallback
-
-                if (candidate) {
-                    let newApplied = p.appliedCandidates?.filter((c: any) => c.id !== candidateId) || [];
-                    let newWorking = p.workingCandidates?.filter((c: any) => c.id !== candidateId) || [];
-                    let newArchived = p.archivedCandidates?.filter((c: any) => c.id !== candidateId) || [];
-
-                    if (status === 'selected') {
-                        newWorking.push({ ...candidate, applicationStatus: 'accepted' });
-                    } else if (status === 'rejected') {
-                        newArchived.push({ ...candidate, applicationStatus: 'rejected' });
-                    }
-
-                    const updatedProject = {
-                        ...p,
-                        appliedCandidates: newApplied,
-                        workingCandidates: newWorking,
-                        archivedCandidates: newArchived
-                    };
-
-                    if (status === 'selected') {
-                        setCelebrationData({
-                            title: 'Candidate Hired!',
-                            message: `${candidate.name} is hired and moved to the Currently Working tab of the project. Would you like to send them an official joining letter?`,
-                            primaryActionText: 'Send Joining Letter',
-                            onPrimaryAction: () => {
-                                handleSendLetter(updatedProject.id, candidate.id, 'joining', `Dear ${candidate.name},\n\nWe are thrilled to officially welcome you to the team for the ${updatedProject.role} project! We were very impressed with your background and believe your skills will be a great addition to our efforts.\n\nPlease find attached the necessary onboarding documents and your initial task assignments.\n\nBest regards,\n${userName}`);
-                                setShowCelebration(false);
-                                setTimeout(() => {
-                                    toast.success('Joining letter has been generated and sent to the candidate.');
-                                    setSelectedProject(updatedProject);
-                                    setProjectInitialTab('working');
-                                    setIsProjectDetailsModalOpen(true);
-                                }, 500);
-                            }
+            setActiveProjects(prev => prev.map(p => {
+                if (p.id === projectId) {
+                    const candidate = p.workingCandidates?.find((c: any) => c.id === candidateId);
+                    if (candidate) {
+                        const collabEntry = {
+                            id: `collab-${Date.now()}`,
+                            candidateId: candidate.id,
+                            name: candidate.name,
+                            photoUrl: candidate.photoUrl,
+                            projectName: p.role,
+                            domain: candidate.domain,
+                            rating: 0,
+                            review: ''
+                        };
+                        setCollaboratedTalent(prevCollab => {
+                            const newCollab = [collabEntry, ...prevCollab];
+                            return newCollab;
                         });
-                        setShowCelebration(true);
-                    }
 
-                    return updatedProject;
+                        const updatedProject = {
+                            ...p,
+                            workingCandidates: p.workingCandidates.filter((c: any) => c.id !== candidateId),
+                            archivedCandidates: [...(p.archivedCandidates || []), { ...candidate, applicationStatus: 'completed' }]
+                        };
+                        if (selectedProject?.id === projectId) setSelectedProject(updatedProject);
+                        return updatedProject;
+                    }
                 }
-            }
-            return p;
-        }));
+                return p;
+            }));
+        } catch (err: any) {
+            console.error("Error completing candidate project:", err);
+            toast.error("Failed to update candidate status");
+        }
+    };
+
+    const handleRevertCandidate = async (projectId: string, candidateId: string) => {
+        try {
+            // Update application back to pending in Supabase
+            const { error } = await supabase
+                .from('applications')
+                .update({ status: 'pending' })
+                .eq('project_id', projectId)
+                .eq('student_id', candidateId);
+
+            if (error) throw error;
+
+            setActiveProjects(prev => prev.map(p => {
+                if (p.id === projectId) {
+                    const candidate = p.archivedCandidates?.find((c: any) => c.id === candidateId);
+                    if (candidate) {
+                        const updatedProject = {
+                            ...p,
+                            archivedCandidates: p.archivedCandidates.filter((c: any) => c.id !== candidateId),
+                            appliedCandidates: [...(p.appliedCandidates || []), { ...candidate, applicationStatus: 'pending' }]
+                        };
+                        if (selectedProject?.id === projectId) setSelectedProject(updatedProject);
+                        return updatedProject;
+                    }
+                }
+                return p;
+            }));
+        } catch (err: any) {
+            console.error("Error reverting candidate:", err);
+            toast.error("Failed to revert candidate");
+        }
+    };
+
+    const handleCandidateMessageStatusChange = async (projectId: string, candidateId: string, status: 'accepted' | 'rejected') => {
+        try {
+            // Update application in Supabase based on the action taken in messages
+            const { error } = await supabase
+                .from('applications')
+                .update({ status: status })
+                .eq('project_id', projectId)
+                .eq('student_id', candidateId);
+
+            if (error) throw error;
+            // Update thread status
+            await supabase.from('message_threads').update({ status }).eq('project_id', projectId).eq('student_id', candidateId);
+
+            setActiveProjects(prev => prev.map(p => {
+                if (p.id === projectId) {
+                    // Find the candidate (they should be in appliedCandidates with applicationStatus: 'accepted', or perhaps working/archived already)
+                    // Actually they might be in `appliedCandidates` 
+                    const candidate = p.appliedCandidates?.find((c: any) => c.id === candidateId) ||
+                        p.workingCandidates?.find((c: any) => c.id === candidateId) ||
+                        p.archivedCandidates?.find((c: any) => c.id === candidateId) ||
+                        talentProfiles.find((c: any) => c.id === candidateId); // fallback
+
+                    if (candidate) {
+                        let newApplied = p.appliedCandidates?.filter((c: any) => c.id !== candidateId) || [];
+                        let newWorking = p.workingCandidates?.filter((c: any) => c.id !== candidateId) || [];
+                        let newArchived = p.archivedCandidates?.filter((c: any) => c.id !== candidateId) || [];
+
+                        if (status === 'accepted') {
+                            newWorking.push({ ...candidate, applicationStatus: 'accepted' });
+                        } else if (status === 'rejected') {
+                            newArchived.push({ ...candidate, applicationStatus: 'rejected' });
+                        }
+
+                        const updatedProject = {
+                            ...p,
+                            appliedCandidates: newApplied,
+                            workingCandidates: newWorking,
+                            archivedCandidates: newArchived
+                        };
+
+                        if (status === 'accepted') {
+                            setCelebrationData({
+                                title: 'Candidate Hired!',
+                                message: `${candidate.name} is hired and moved to the Currently Working tab of the project. Would you like to send them an official joining letter?`,
+                                primaryActionText: 'Send Joining Letter',
+                                onPrimaryAction: () => {
+                                    handleSendLetter(updatedProject.id, candidate.id, 'joining', `Dear ${candidate.name},\n\nWe are thrilled to officially welcome you to the team for the ${updatedProject.role} project! We were very impressed with your background and believe your skills will be a great addition to our efforts.\n\nPlease find attached the necessary onboarding documents and your initial task assignments.\n\nBest regards,\n${userName}`);
+                                    setShowCelebration(false);
+                                    setTimeout(() => {
+                                        toast.success('Joining letter has been generated and sent to the candidate.');
+                                        setSelectedProject(updatedProject);
+                                        setProjectInitialTab('working');
+                                        setIsProjectDetailsModalOpen(true);
+                                    }, 500);
+                                }
+                            });
+                            setShowCelebration(true);
+                        }
+
+                        return updatedProject;
+                    }
+                }
+                return p;
+            }));
+        } catch (err: any) {
+            console.error("Error updating candidate message status:", err);
+            toast.error("Failed to update candidate status");
+        }
     };
 
     return (
@@ -795,7 +1115,7 @@ const RecruiterDashboard = () => {
                                             className="w-full sm:w-64 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 outline-none"
                                         >
                                             <option value="All">All Colleges</option>
-                                            {MOCK_COLLEGES.map(c => <option key={c} value={c}>{c}</option>)}
+                                            {colleges.map((c: string) => <option key={c} value={c}>{c}</option>)}
                                         </select>
                                     </div>
                                 </div>

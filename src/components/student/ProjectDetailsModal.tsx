@@ -6,7 +6,8 @@ import { useInterviewStatus } from '../../hooks/useInterviewStatus';
 interface ProjectDetailsModalProps {
     isOpen: boolean;
     onClose: () => void;
-    projectId: number;
+    projectId: string | number;
+    project?: any;
     onApplyClicked: () => void;
 }
 
@@ -19,12 +20,12 @@ const timeAgo = (dateInput?: string) => {
     return 'Recently';
 };
 
-export default function ProjectDetailsModal({ isOpen, onClose, projectId, onApplyClicked }: ProjectDetailsModalProps) {
+export default function ProjectDetailsModal({ isOpen, onClose, projectId, project: passedProject, onApplyClicked }: ProjectDetailsModalProps) {
     const { isAuthenticated, userRole } = useAuth();
 
     if (!isOpen) return null;
 
-    const project = MOCK_PROJECTS.find(p => p.id === projectId);
+    const project = passedProject || MOCK_PROJECTS.find(p => p.id === projectId);
     if (!project) return null;
 
     const { interviewStatus } = useInterviewStatus();
@@ -114,7 +115,7 @@ export default function ProjectDetailsModal({ isOpen, onClose, projectId, onAppl
                                     <li>Proficient in the following core technologies:</li>
                                 </ul>
                                 <div className="flex flex-wrap gap-2 mt-4">
-                                    {project.tags.map(tag => (
+                                    {project.tags.map((tag: string) => (
                                         <span key={tag} className="flex items-center text-sm font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                                             <Tag className="w-3.5 h-3.5 mr-1.5 opacity-50" /> {tag}
                                         </span>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Briefcase, Mail, Lock, AlertCircle, GraduationCap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -17,8 +17,7 @@ const Login = () => {
     const type = searchParams.get('type') as 'student' | 'recruiter' | null;
     const returnTo = searchParams.get('returnTo');
 
-    const [isResettingPassword, setIsResettingPassword] = useState(false);
-    const [resetMessage, setResetMessage] = useState('');
+
 
     const handleEmailLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -59,33 +58,7 @@ const Login = () => {
         }
     };
 
-    const handlePasswordReset = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!email) {
-            setError('Please enter your email address to reset your password.');
-            return;
-        }
-        setIsLoading(true);
-        setError('');
 
-        try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/auth/v1/update-password`,
-            });
-            if (error) throw error;
-
-            setIsLoading(false);
-            setResetMessage('If an account exists with this email, you will receive a password reset link shortly.');
-            setTimeout(() => {
-                setIsResettingPassword(false);
-                setResetMessage('');
-            }, 5000);
-        } catch (err: any) {
-            console.error('Password Reset Error:', err);
-            setError(err.message || 'Failed to send password reset email.');
-            setIsLoading(false);
-        }
-    };
 
     if (!type) {
         return (
@@ -204,143 +177,87 @@ const Login = () => {
                         </div>
                     )}
 
-                    {resetMessage && (
-                        <div className="mb-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 px-4 py-3 rounded-xl flex items-start gap-3">
-                            <p className="text-sm font-medium">{resetMessage}</p>
+
+                    <form noValidate className="space-y-6 relative z-10" onSubmit={handleEmailLogin}>
+                        <div>
+                            <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                Email address
+                            </label>
+                            <div className="mt-1 relative rounded-xl shadow-sm">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Mail className="h-5 w-5 text-slate-400" />
+                                </div>
+                                <input
+                                    id="email"
+                                    name="email"
+                                    type="email"
+                                    autoComplete="email"
+                                    required
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="block w-full pl-10 pr-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all input-interactive"
+                                    placeholder="you@example.com"
+                                />
+                            </div>
                         </div>
-                    )}
 
-                    {isResettingPassword ? (
-                        <form noValidate className="space-y-6 relative z-10" onSubmit={handlePasswordReset}>
-                            <div>
-                                <label htmlFor="reset-email" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                                    Email address
+                        <div>
+                            <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                Password
+                            </label>
+                            <div className="mt-1 relative rounded-xl shadow-sm">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Lock className="h-5 w-5 text-slate-400" />
+                                </div>
+                                <input
+                                    id="password"
+                                    name="password"
+                                    type="password"
+                                    autoComplete="current-password"
+                                    required
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="block w-full pl-10 pr-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all input-interactive"
+                                    placeholder="••••••••"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <input
+                                    id="remember-me"
+                                    name="remember-me"
+                                    type="checkbox"
+                                    className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-slate-300 dark:border-slate-700 rounded bg-white dark:bg-slate-900"
+                                />
+                                <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-600 dark:text-slate-400">
+                                    Remember me
                                 </label>
-                                <div className="mt-1 relative rounded-xl shadow-sm">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <Mail className="h-5 w-5 text-slate-400" />
-                                    </div>
-                                    <input
-                                        id="reset-email"
-                                        name="email"
-                                        type="email"
-                                        autoComplete="email"
-                                        required
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        className="block w-full pl-10 pr-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all input-interactive"
-                                        placeholder="you@example.com"
-                                    />
-                                </div>
                             </div>
+                        </div>
 
-                            <div>
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-md shadow-brand-500/20 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all hover:-translate-y-0.5 disabled:opacity-70 disabled:hover:translate-y-0 btn-interactive"
-                                >
-                                    {isLoading ? (
-                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                    ) : 'Send Reset Link'}
-                                </button>
-                            </div>
+                        <div className="flex justify-end text-sm">
+                            <Link to="/forgot-password" className="font-medium text-brand-600 hover:text-brand-500 transition-colors">
+                                Forgot password?
+                            </Link>
+                        </div>
 
-                            <div className="text-center">
-                                <button
-                                    type="button"
-                                    onClick={() => { setIsResettingPassword(false); setError(''); }}
-                                    className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-                                >
-                                    Back to sign in
-                                </button>
-                            </div>
-                        </form>
-                    ) : (
-                        <form noValidate className="space-y-6 relative z-10" onSubmit={handleEmailLogin}>
-                            <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                                    Email address
-                                </label>
-                                <div className="mt-1 relative rounded-xl shadow-sm">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <Mail className="h-5 w-5 text-slate-400" />
-                                    </div>
-                                    <input
-                                        id="email"
-                                        name="email"
-                                        type="email"
-                                        autoComplete="email"
-                                        required
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        className="block w-full pl-10 pr-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all input-interactive"
-                                        placeholder="you@example.com"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                                    Password
-                                </label>
-                                <div className="mt-1 relative rounded-xl shadow-sm">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <Lock className="h-5 w-5 text-slate-400" />
-                                    </div>
-                                    <input
-                                        id="password"
-                                        name="password"
-                                        type="password"
-                                        autoComplete="current-password"
-                                        required
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="block w-full pl-10 pr-3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all input-interactive"
-                                        placeholder="••••••••"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                    <input
-                                        id="remember-me"
-                                        name="remember-me"
-                                        type="checkbox"
-                                        className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-slate-300 dark:border-slate-700 rounded bg-white dark:bg-slate-900"
-                                    />
-                                    <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-600 dark:text-slate-400">
-                                        Remember me
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div className="flex justify-end text-sm">
-                                <button type="button" onClick={() => { setIsResettingPassword(true); setError(''); }} className="font-medium text-brand-600 hover:text-brand-500 transition-colors">
-                                    Forgot password?
-                                </button>
-                            </div>
-
-                            <div>
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-md shadow-brand-500/20 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all hover:-translate-y-0.5 disabled:opacity-70 disabled:hover:translate-y-0 btn-interactive"
-                                >
-                                    {isLoading ? (
-                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                    ) : 'Sign in'}
-                                </button>
-                            </div>
-                        </form>
-                    )}
+                        <div>
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-md shadow-brand-500/20 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all hover:-translate-y-0.5 disabled:opacity-70 disabled:hover:translate-y-0 btn-interactive"
+                            >
+                                {isLoading ? (
+                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                ) : 'Sign in'}
+                            </button>
+                        </div>
+                    </form>
                     {type !== 'recruiter' && (
                         <div className="mt-8 relative z-10">
                             <div className="relative">

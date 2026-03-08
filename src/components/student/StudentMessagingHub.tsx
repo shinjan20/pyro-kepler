@@ -1,18 +1,74 @@
-import { useState } from 'react';
-import { Clock, MessageSquare, Briefcase, ChevronLeft, FileText, Download } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Clock, MessageSquare, Briefcase, ChevronLeft, FileText, Download, X, Paperclip, AlertCircle, Send } from 'lucide-react';
 import jsPDF from 'jspdf';
+import { checkTextForProfanityAsync } from '../../utils/profanityFilter';
+import ProfanityWarningModal from '../ProfanityWarningModal';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 interface StudentMessagingHubProps {
     threads: any[];
-    setThreads: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 const StudentMessagingHub = ({ threads }: StudentMessagingHubProps) => {
 
+    const { userId } = useAuth();
     const [activeThreadId, setActiveThreadId] = useState<string | null>(threads[0]?.id || null);
     const [showMobileChat, setShowMobileChat] = useState(false);
 
+    // Message input state
+    const [newMessage, setNewMessage] = useState('');
+    const [attachedFile, setAttachedFile] = useState<File | null>(null);
+    const [isSending, setIsSending] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const activeThread = threads.find(t => t.id === activeThreadId);
+
+    const handleSendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setErrorMessage('');
+
+        if ((!newMessage.trim() && !attachedFile) || !activeThreadId || !userId) return;
+
+        setIsSending(true);
+        const hasProfanity = await checkTextForProfanityAsync(newMessage);
+
+        if (hasProfanity) {
+            setErrorMessage('Please use professional language. Unprofessional or inappropriate terms are strictly prohibited.');
+            setIsSending(false);
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('messages')
+                .insert([{
+                    thread_id: activeThreadId,
+                    sender_id: userId,
+                    content: newMessage,
+                    attached_file_name: attachedFile?.name || null
+                }]);
+
+            if (error) throw error;
+
+            // Note: The UI will automatically update due to the Realtime subscription in StudentDashboard.tsx
+
+            setNewMessage('');
+            setAttachedFile(null);
+        } catch (err: any) {
+            console.error('Error sending message:', err);
+            setErrorMessage('Failed to send message: ' + err.message);
+        } finally {
+            setIsSending(false);
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            setAttachedFile(e.target.files[0]);
+        }
+    };
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
@@ -55,7 +111,13 @@ const StudentMessagingHub = ({ threads }: StudentMessagingHubProps) => {
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(51, 65, 85);
 
-        const wrappedBody = doc.splitTextToSize(messageText, 170);
+        let bodyToRender = messageText;
+        const bestRegardsIndex = bodyToRender.toLowerCase().lastIndexOf('best regards');
+        if (bestRegardsIndex !== -1) {
+            bodyToRender = bodyToRender.substring(0, bestRegardsIndex).trim();
+        }
+
+        const wrappedBody = doc.splitTextToSize(bodyToRender, 170);
 
         let yPos = 100;
         doc.text(wrappedBody, 20, yPos);
@@ -73,7 +135,7 @@ const StudentMessagingHub = ({ threads }: StudentMessagingHubProps) => {
 
         yPos += 8;
 
-        doc.setFont('helvetica', 'normal');
+        doc.setFont('helvetica', 'bold');
         doc.text(companyName, 20, yPos);
 
         const safeType = letterType === 'completion' ? 'completion' : 'joining';
@@ -250,6 +312,65 @@ const StudentMessagingHub = ({ threads }: StudentMessagingHubProps) => {
 
                         })}
 
+                    </div>
+
+                    {/* Input Area */}
+                    <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
+                        <ProfanityWarningModal error={errorMessage} onClose={() => setErrorMessage('')} />
+                        {errorMessage && (
+                            <div className={`mb-3 bg-red-500/10 border border-red-500/30 text-red-500 p-3 rounded-xl items-start gap-2 text-sm animate-in fade-in slide-in-from-bottom-2 ${(errorMessage.toLowerCase().includes('inappropriate') || errorMessage.toLowerCase().includes('professional')) ? 'hidden md:flex' : 'flex'}`}>
+                                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                <p>{errorMessage}</p>
+                            </div>
+                        )}
+                        <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
+                            {attachedFile && (
+                                <div className="flex items-center gap-2 p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm max-w-sm self-start mb-1 animation-in fade-in">
+                                    <FileText className="w-4 h-4 text-slate-500" />
+                                    <span className="truncate flex-1 text-slate-700 dark:text-slate-200 font-medium">
+                                        {attachedFile.name}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAttachedFile(null)}
+                                        className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
+                            <div className="flex gap-2 items-center">
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="p-3 text-slate-400 hover:text-brand-600 hover:bg-slate-100 rounded-xl transition-colors"
+                                    title="Attach file"
+                                >
+                                    <Paperclip className="w-5 h-5" />
+                                </button>
+
+                                <input
+                                    type="text"
+                                    value={newMessage}
+                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    placeholder={attachedFile ? "Add a message (optional)..." : "Type your message..."}
+                                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/50 text-slate-900 transition-shadow"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={(!newMessage.trim() && !attachedFile) || isSending}
+                                    className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 text-white p-3 rounded-xl transition-colors shadow-sm flex items-center justify-center"
+                                >
+                                    <Send className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </form>
                     </div>
 
                 </div>

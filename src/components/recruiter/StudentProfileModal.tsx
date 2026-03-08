@@ -124,7 +124,7 @@ const StudentProfileModal = ({ isOpen, onClose, profile, hasActiveProjects, acti
                                 <div>
                                     <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2 border-b border-slate-200 dark:border-slate-800 pb-1.5">About</h3>
                                     <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                        Passionate {profile.domain.toLowerCase()} student with a strong track record of delivering quality work.
+                                        Passionate {(profile.domain || 'student').toLowerCase()} with a strong track record of delivering quality work.
                                         I am looking for challenging live projects to further hone my skills and contribute to real-world products.
                                     </p>
                                 </div>

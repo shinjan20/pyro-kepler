@@ -6,6 +6,7 @@ interface AuthContextType {
     userRole: UserRole;
     userName: string;
     userPhoto: string | null;
+    userId: string | null;
     isAuthenticated: boolean;
     hasCompletedProfile: boolean;
     login: (role: UserRole, name?: string, photoUrl?: string) => Promise<void>;
@@ -25,6 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [userRole, setUserRole] = useState<UserRole>(null);
     const [userName, setUserName] = useState<string>('');
     const [userPhoto, setUserPhoto] = useState<string | null>(null);
+    const [userId, setUserId] = useState<string | null>(null);
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [hasCompletedProfile, setHasCompletedProfile] = useState<boolean>(false);
 
@@ -33,12 +35,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const storedRole = localStorage.getItem('userRole') as UserRole;
         const storedName = localStorage.getItem('userName') || '';
         const storedPhoto = localStorage.getItem('userPhoto');
+        const storedId = localStorage.getItem('userId');
         const storedCompleted = localStorage.getItem('hasCompletedProfile') === 'true';
 
         if (storedRole) {
             setUserRole(storedRole);
             setUserName(storedName);
             setUserPhoto(storedPhoto);
+            setUserId(storedId);
             setIsAuthenticated(true);
             setHasCompletedProfile(storedCompleted);
         }
@@ -59,22 +63,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // Sync to our local storage system and states
                 localStorage.setItem('userRole', finalRole);
                 localStorage.setItem('userName', name);
+                localStorage.setItem('userId', user.id);
                 if (photo) localStorage.setItem('userPhoto', photo);
                 localStorage.removeItem('pendingAuthRole'); // clean up
+
+                try {
+                    // Check if profile exists, if not create it
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('id, college, domain')
+                        .eq('id', user.id)
+                        .maybeSingle();
+
+                    if (!profile) {
+                        const profileData: any = {
+                            id: user.id,
+                            role: finalRole,
+                            name: name,
+                            photo_url: photo
+                        };
+                        if (finalRole === 'recruiter') {
+                            profileData.company_name = metadata.company_name || null;
+                            profileData.company_website = metadata.company_website || null;
+                        }
+                        await supabase.from('profiles').insert([profileData]);
+                    } else if (profile.college && profile.domain) {
+                        // Profile is fully set up in DB
+                        localStorage.setItem('hasCompletedProfile', 'true');
+                        setHasCompletedProfile(true);
+                    }
+                } catch (err) {
+                    console.error("Error ensuring profile exists:", err);
+                }
 
                 setUserRole(finalRole);
                 setUserName(name);
                 setUserPhoto(photo);
+                setUserId(user.id);
                 setIsAuthenticated(true);
             } else if (event === 'SIGNED_OUT') {
-                // Clear local states
-                localStorage.removeItem('userRole');
-                localStorage.removeItem('userName');
-                localStorage.removeItem('userPhoto');
-                localStorage.removeItem('hasCompletedProfile');
+                // Clear local states completely
+                localStorage.clear();
                 setUserRole(null);
                 setUserName('');
                 setUserPhoto(null);
+                setUserId(null);
                 setIsAuthenticated(false);
                 setHasCompletedProfile(false);
             }
@@ -186,20 +219,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const logout = async () => {
-        // Sign out of Supabase
-        await supabase.auth.signOut();
+        // Sign out of Supabase with a timeout to prevent hanging forever
+        try {
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Supabase signOut timeout')), 3000);
+            });
+            await Promise.race([supabase.auth.signOut(), timeoutPromise]);
+        } catch (err) {
+            console.error('Error signing out:', err);
+        } finally {
+            // Forcefully clear any Supabase session keys since the API can sometimes
+            // throw an error on an expired token, leaving the corrupted token stuck.
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                    localStorage.removeItem(key);
+                }
+            });
 
-        // Supabase onAuthStateChange will handle the rest of the local cleanup, 
-        // but we'll do it explicitly here for immediate UI update just in case
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('userName');
-        localStorage.removeItem('userPhoto');
-        localStorage.removeItem('hasCompletedProfile');
-        setUserRole(null);
-        setUserName('');
-        setUserPhoto(null);
-        setIsAuthenticated(false);
-        setHasCompletedProfile(false);
+            // Supabase onAuthStateChange will handle the rest of the local cleanup, 
+            // but we'll forcefully clear all local storage here for immediate UI update 
+            // to guarantee no mock data or orphaned states remain active.
+            localStorage.clear();
+            setUserRole(null);
+            setUserName('');
+            setUserPhoto(null);
+            setUserId(null);
+            setIsAuthenticated(false);
+            setHasCompletedProfile(false);
+        }
     };
 
     const updatePassword = async (currentPassword: string, newPassword: string) => {
@@ -237,7 +284,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return (
         <AuthContext.Provider value={{
-            userRole, userName, userPhoto, isAuthenticated, hasCompletedProfile,
+            userRole, userName, userPhoto, userId, isAuthenticated, hasCompletedProfile,
             login, loginWithGoogle, loginWithEmail, registerWithEmail, verifyOtp,
             logout, updateUserPhoto, completeProfile, updatePassword
         }}>

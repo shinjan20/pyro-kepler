@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import confetti from 'canvas-confetti';
 import { checkFormForProfanityAsync } from '../utils/profanityFilter';
 import ProfanityWarningModal from '../components/ProfanityWarningModal';
+import { supabase } from '../lib/supabase';
 
 const DOMAINS = [
     'Software Engineering',
@@ -32,7 +33,7 @@ const StudentProfileForm = () => {
     const resumeInputRef = useRef<HTMLInputElement>(null);
 
     const navigate = useNavigate();
-    const { userName, updateUserPhoto, completeProfile } = useAuth();
+    const { userName, updateUserPhoto, completeProfile, userId } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -52,9 +53,16 @@ const StudentProfileForm = () => {
             return;
         }
 
-        // Simulate API call to save profile
-        setTimeout(() => {
-            setIsLoading(false);
+        try {
+            if (userId) {
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .update({ college, domain })
+                    .eq('id', userId);
+
+                if (profileError) throw profileError;
+            }
+
             if (photoFile) {
                 const objectUrl = URL.createObjectURL(photoFile);
                 updateUserPhoto(objectUrl);
@@ -88,11 +96,15 @@ const StudentProfileForm = () => {
                 if (currentProgress >= 100) {
                     clearInterval(interval);
                     setShowSuccessModal(false);
+                    setIsLoading(false);
                     navigate('/dashboard/student');
                 }
             }, 150);
-
-        }, 1200);
+        } catch (err: any) {
+            console.error("Failed to complete profile:", err);
+            setError(err.message || 'An error occurred while saving your profile.');
+            setIsLoading(false);
+        }
     };
 
     return (

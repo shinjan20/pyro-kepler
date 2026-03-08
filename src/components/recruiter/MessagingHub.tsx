@@ -1,24 +1,26 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, CheckCircle, XCircle, Search, Clock, MessageSquare, Briefcase, ChevronLeft, AlertCircle, Paperclip, FileText, X, Download } from 'lucide-react';
-import { MOCK_PROFILES, MOCK_COLLABORATED_TALENT } from '../../constants';
 import { checkTextForProfanityAsync } from '../../utils/profanityFilter';
 import ProfanityWarningModal from '../ProfanityWarningModal';
 import jsPDF from 'jspdf';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 interface MessagingHubProps {
     projects: any[]; // The active projects to match IDs
     threads: any[];
     setThreads: React.Dispatch<React.SetStateAction<any[]>>;
-    onUpdateCandidateStatus: (projectId: string, candidateId: string, newStatus: 'selected' | 'rejected') => void;
+    onUpdateCandidateStatus: (projectId: string, candidateId: string, newStatus: 'accepted' | 'rejected') => void;
     initialActiveThreadId?: string | null;
 }
 
-const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, initialActiveThreadId }: MessagingHubProps) => {
+const MessagingHub = ({ projects, threads, setThreads: _setThreads, onUpdateCandidateStatus, initialActiveThreadId }: MessagingHubProps) => {
+    const { userName, userId } = useAuth();
     // Basic local state to handle message sending and status changes in memory
     const [activeThreadId, setActiveThreadId] = useState<string | null>(initialActiveThreadId || threads[0]?.id || null);
     const [newMessage, setNewMessage] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<'all' | 'selected' | 'rejected'>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'accepted' | 'rejected'>('all');
     const [projectFilter, setProjectFilter] = useState<string>('all');
 
     // For mobile view toggling between list and chat
@@ -35,21 +37,14 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
         }
     }, [initialActiveThreadId]);
     const filteredThreads = threads.filter(thread => {
-        let threadCandidate = MOCK_PROFILES.find(p => p.id === thread.candidateId) as any;
-        if (!threadCandidate) {
-            const collabCandidate = (MOCK_COLLABORATED_TALENT as any[]).find(c => c.id === thread.candidateId);
-            if (collabCandidate) {
-                threadCandidate = {
-                    id: collabCandidate.id,
-                    name: collabCandidate.name,
-                    photoUrl: collabCandidate.photoUrl,
-                    domain: collabCandidate.domain,
-                    college: 'Unknown College',
-                    completedProjects: 1,
-                    pastProjects: []
-                };
-            }
-        }
+        const threadCandidate = {
+            id: thread.candidateId,
+            name: thread.candidateName || 'Applicant',
+            photoUrl: thread.candidatePhotoUrl || '',
+            domain: thread.candidateDomain || 'Candidate',
+            college: thread.candidateCollege || ''
+        };
+
         if (!threadCandidate) return false;
 
         const matchesSearch = threadCandidate.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -62,21 +57,13 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
     const activeThread = threads.find(t => t.id === activeThreadId);
 
     // Get candidate and project details for the active thread
-    let candidate = activeThread ? MOCK_PROFILES.find(p => p.id === activeThread.candidateId) as any : null;
-    if (!candidate && activeThread) {
-        const collabCandidate = (MOCK_COLLABORATED_TALENT as any[]).find(c => c.id === activeThread.candidateId);
-        if (collabCandidate) {
-            candidate = {
-                id: collabCandidate.id,
-                name: collabCandidate.name,
-                photoUrl: collabCandidate.photoUrl,
-                domain: collabCandidate.domain,
-                college: 'Unknown College',
-                completedProjects: 1,
-                pastProjects: []
-            };
-        }
-    }
+    let candidate = activeThread ? {
+        id: activeThread.candidateId,
+        name: activeThread.candidateName || 'Applicant',
+        photoUrl: activeThread.candidatePhotoUrl || '',
+        domain: activeThread.candidateDomain || 'Candidate',
+        college: activeThread.candidateCollege || ''
+    } : null;
 
     const project = activeThread ? projects.find(p => p.id === activeThread.projectId) : null;
 
@@ -86,7 +73,7 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
         e.preventDefault();
         setErrorMessage('');
 
-        if ((!newMessage.trim() && !attachedFile) || !activeThreadId) return;
+        if ((!newMessage.trim() && !attachedFile) || !activeThreadId || !userId) return;
 
         setIsSending(true);
         const hasProfanity = await checkTextForProfanityAsync(newMessage);
@@ -97,27 +84,25 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
             return;
         }
 
-        setThreads(prev => prev.map(thread => {
-            if (thread.id === activeThreadId) {
-                return {
-                    ...thread,
-                    messages: [
-                        ...thread.messages,
-                        {
-                            id: Date.now().toString(),
-                            senderId: 'recruiter',
-                            text: newMessage,
-                            timestamp: new Date().toISOString(),
-                            attachedFileName: attachedFile?.name || null
-                        }
-                    ]
-                };
-            }
-            return thread;
-        }));
-        setNewMessage('');
-        setAttachedFile(null);
-        setIsSending(false);
+        try {
+            const { error } = await supabase
+                .from('messages')
+                .insert([{
+                    thread_id: activeThreadId,
+                    sender_id: userId,
+                    content: newMessage,
+                    attached_file_name: attachedFile?.name || null
+                }]);
+
+            if (error) throw error;
+        } catch (err: any) {
+            console.error('Error sending message:', err);
+            setErrorMessage('Failed to send message: ' + err.message);
+        } finally {
+            setNewMessage('');
+            setAttachedFile(null);
+            setIsSending(false);
+        }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,7 +111,7 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
         }
     };
 
-    const handleUpdateCandidateStatus = (newStatus: 'selected' | 'rejected') => {
+    const handleUpdateCandidateStatus = (newStatus: 'accepted' | 'rejected') => {
         if (!activeThreadId || !activeThread) return;
 
         // Notify the dashboard to move candidate from applicants to working/archived
@@ -166,10 +151,35 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
         doc.setFontSize(12);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(51, 65, 85); // Slate-700
-        const wrappedBody = doc.splitTextToSize(messageText, 170);
+
+        let bodyToRender = messageText;
+        const bestRegardsIndex = bodyToRender.toLowerCase().lastIndexOf('best regards');
+        if (bestRegardsIndex !== -1) {
+            bodyToRender = bodyToRender.substring(0, bestRegardsIndex).trim();
+        }
+
+        const wrappedBody = doc.splitTextToSize(bodyToRender, 170);
 
         let yPos = 100;
         doc.text(wrappedBody, 20, yPos);
+
+        yPos += wrappedBody.length * 7 + 10;
+
+        doc.setFont('helvetica', 'normal');
+        doc.text('Best Regards,', 20, yPos);
+
+        yPos += 10;
+
+        // Recruiter Name (BOLD)
+        doc.setFont('helvetica', 'bold');
+        doc.text(userName || 'Recruiter', 20, yPos);
+
+        yPos += 8;
+
+        doc.setFont('helvetica', 'bold');
+        // project's company or default
+        const companyNameToUse = _projectData?.company || 'ProjectMatch Partner';
+        doc.text(companyNameToUse, 20, yPos);
 
         // Output
         const safeName = candidateData.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
@@ -209,7 +219,7 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
                             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs py-1.5 px-2 focus:outline-none focus:ring-2 focus:ring-brand-500/50 flex-1 min-w-0"
                         >
                             <option value="all">All Statuses</option>
-                            <option value="selected">Selected</option>
+                            <option value="accepted">Accepted</option>
                             <option value="rejected">Rejected</option>
                         </select>
                         <select
@@ -227,21 +237,13 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
 
                 <div className="flex-1 overflow-y-auto">
                     {filteredThreads.map(thread => {
-                        let threadCandidate = MOCK_PROFILES.find(p => p.id === thread.candidateId) as any;
-                        if (!threadCandidate) {
-                            const collabCandidate = (MOCK_COLLABORATED_TALENT as any[]).find(c => c.id === thread.candidateId);
-                            if (collabCandidate) {
-                                threadCandidate = {
-                                    id: collabCandidate.id,
-                                    name: collabCandidate.name,
-                                    photoUrl: collabCandidate.photoUrl,
-                                    domain: collabCandidate.domain,
-                                    college: 'Unknown College',
-                                    completedProjects: 1,
-                                    pastProjects: []
-                                };
-                            }
-                        }
+                        const threadCandidate = {
+                            id: thread.candidateId,
+                            name: thread.candidateName || 'Applicant',
+                            photoUrl: '',
+                            domain: 'Candidate',
+                            college: ''
+                        };
                         const lastMessage = thread.messages[thread.messages.length - 1];
                         const isActive = thread.id === activeThreadId;
 
@@ -271,8 +273,8 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
                                     <div className="flex justify-between items-start mb-0.5">
                                         <div className="flex items-center gap-2">
                                             <h4 className="font-bold text-slate-900 dark:text-white truncate max-w-[120px]">{threadCandidate.name}</h4>
-                                            {thread.status === 'selected' && (
-                                                <span className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide shrink-0">Selected</span>
+                                            {thread.status === 'accepted' && (
+                                                <span className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide shrink-0">Accepted</span>
                                             )}
                                             {thread.status === 'rejected' && (
                                                 <span className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide shrink-0">Rejected</span>
@@ -326,9 +328,9 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
 
                         {/* Status / Actions */}
                         <div className="flex items-center gap-2 md:gap-3 shrink-0 ml-2">
-                            {activeThread.status === 'selected' && (
+                            {activeThread.status === 'accepted' && (
                                 <span className="flex items-center gap-1.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-3 py-1.5 rounded-lg text-sm font-bold">
-                                    <CheckCircle className="w-4 h-4" /> Selected
+                                    <CheckCircle className="w-4 h-4" /> Accepted
                                 </span>
                             )}
                             {activeThread.status === 'rejected' && (
@@ -346,9 +348,9 @@ const MessagingHub = ({ projects, threads, setThreads, onUpdateCandidateStatus, 
                                         <XCircle className="w-5 h-5" />
                                     </button>
                                     <button
-                                        onClick={() => handleUpdateCandidateStatus('selected')}
+                                        onClick={() => handleUpdateCandidateStatus('accepted')}
                                         className="p-2 text-slate-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-                                        title="Select Candidate"
+                                        title="Accept Candidate"
                                     >
                                         <CheckCircle className="w-5 h-5" />
                                     </button>

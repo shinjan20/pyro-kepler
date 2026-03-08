@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -11,6 +12,8 @@ import StudentProfileForm from './pages/StudentProfileForm';
 import StudentDashboard from './pages/StudentDashboard';
 import CompletedProjects from './pages/CompletedProjects';
 import AuthCallback from './pages/AuthCallback';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
@@ -26,6 +29,16 @@ const ProtectedStudentRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+  React.useEffect(() => {
+    // Intercept Supabase Auth recovery redirects that land on the root path
+    // e.g., when the email template drops the path or uses the global Site URL
+    const hash = window.location.hash;
+    if (hash && hash.includes('type=recovery')) {
+      // Redirect to the reset password page with the hash intact so Supabase can parse it
+      window.location.replace(`/reset-password${hash}`);
+    }
+  }, []);
+
   return (
     <AuthProvider>
       <Router>
@@ -38,6 +51,9 @@ function App() {
               <Route path="/projects" element={<Projects />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/auth/v1/update-password" element={<ResetPassword />} />
               <Route path="/auth/v1/callback" element={<AuthCallback />} />
               <Route path="/student-profile-setup" element={<StudentProfileForm />} />
               <Route path="/dashboard/student" element={<ProtectedStudentRoute><StudentDashboard /></ProtectedStudentRoute>} />

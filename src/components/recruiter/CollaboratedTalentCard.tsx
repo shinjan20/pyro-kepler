@@ -5,6 +5,8 @@ import ProfanityWarningModal from '../ProfanityWarningModal';
 
 interface CollaboratedTalent {
     id: string | number;
+    candidateId: string;
+    projectId: string;
     name: string;
     photoUrl: string;
     domain: string;
@@ -51,7 +53,7 @@ const CollaboratedTalentCard = ({ collab, onMessageInitiated }: CollaboratedTale
 
         // Simulate sending a message
         if (onMessageInitiated) {
-            onMessageInitiated('collab-project', String(collab.id), messageText);
+            onMessageInitiated(collab.projectId, String(collab.candidateId), messageText);
         }
 
         setMessageSent(true);

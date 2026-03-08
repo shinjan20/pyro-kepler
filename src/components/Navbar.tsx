@@ -38,11 +38,16 @@ const Navbar = () => {
         }
     };
 
-    const handleLogout = () => {
-        logout().then(() => {
+    const handleLogout = async () => {
+        try {
+            await logout();
+        } catch (error) {
+            console.error("Logout failed in Navbar:", error);
+        } finally {
             setShowProfileMenu(false);
-            navigate('/', { replace: true });
-        });
+            setIsOpen(false);
+            window.location.href = '/'; // Hard refresh to ensure all states are cleared 
+        }
     };
 
     useEffect(() => {

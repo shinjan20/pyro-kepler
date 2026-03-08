@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Search, Filter, Clock, Tag, ArrowRight, Banknote, Calendar, Users, Home } from 'lucide-react';
-import { MOCK_PROJECTS, CATEGORIES } from '../constants';
+import { CATEGORIES } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ProjectFiltersModal from '../components/student/ProjectFiltersModal';
 import ApplicationModal from '../components/student/ApplicationModal';
@@ -33,7 +34,7 @@ const timeAgo = (dateInput?: string) => {
 };
 
 const Projects = () => {
-    const { isAuthenticated, userRole, hasCompletedProfile } = useAuth();
+    const { isAuthenticated, userRole, hasCompletedProfile, userId } = useAuth();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const initialBookmarkFilter = searchParams.get('bookmarks') === 'true';
@@ -52,8 +53,8 @@ const Projects = () => {
     });
 
     // Application Modal State
-    const [applyingProjectId, setApplyingProjectId] = useState<number | null>(null);
-    const [viewingProjectId, setViewingProjectId] = useState<number | null>(null);
+    const [applyingProjectId, setApplyingProjectId] = useState<string | null>(null);
+    const [viewingProjectId, setViewingProjectId] = useState<string | null>(null);
     const [alertConfig, setAlertConfig] = useState<{
         isOpen: boolean;
         title: string;
@@ -67,20 +68,91 @@ const Projects = () => {
     });
 
     // Bookmarks State
-    const [bookmarkedProjectIds, setBookmarkedProjectIds] = useState<number[]>(() => {
+    const [bookmarkedProjectIds, setBookmarkedProjectIds] = useState<string[]>(() => {
         const saved = localStorage.getItem('pyroBookmarks');
         return saved ? JSON.parse(saved) : [];
     });
 
     // Applications State
-    const [appliedProjectIds, setAppliedProjectIds] = useState<number[]>(() => {
-        const savedApps = localStorage.getItem('pyroApplications');
-        if (savedApps) {
-            const parsedApps = JSON.parse(savedApps);
-            return parsedApps.map((app: any) => app.projectId);
-        }
-        return [];
-    });
+    const [appliedProjectIds, setAppliedProjectIds] = useState<string[]>([]);
+
+    // Live Projects State
+    const [liveProjects, setLiveProjects] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchApplied = async () => {
+            if (userRole === 'student' && userId) {
+                const { data } = await supabase
+                    .from('applications')
+                    .select('project_id')
+                    .eq('student_id', userId);
+                if (data) {
+                    setAppliedProjectIds(data.map(a => a.project_id));
+                }
+            }
+        };
+        fetchApplied();
+    }, [userId, userRole]);
+
+    useEffect(() => {
+        const fetchProjects = async () => {
+            try {
+                // Fetch active projects that are open
+                const { data: projectsData, error } = await supabase
+                    .from('projects')
+                    .select(`
+                        id,
+                        role,
+                        domain,
+                        objective,
+                        expectations,
+                        positions,
+                        tenure,
+                        remuneration,
+                        status,
+                        created_at,
+                        recruiter:profiles!projects_recruiter_id_fkey (
+                            company_name
+                        )
+                    `)
+                    .eq('status', 'active')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                const { data: appsData } = await supabase
+                    .from('applications')
+                    .select('project_id, status')
+                    .in('status', ['accepted', 'completed']);
+
+                const hiredCounts: Record<string, number> = {};
+                appsData?.forEach(app => {
+                    hiredCounts[app.project_id] = (hiredCounts[app.project_id] || 0) + 1;
+                });
+
+                if (projectsData) {
+                    const formatted = projectsData.map((p: any) => ({
+                        id: p.id,
+                        title: p.role,
+                        company: p.recruiter?.company_name || 'Company',
+                        category: p.domain,
+                        type: 'Remote', // Hardcoded for now
+                        duration: p.tenure + ' months',
+                        remuneration: p.remuneration,
+                        totalPositions: p.positions || 1,
+                        hiredPositions: hiredCounts[p.id] || 0,
+                        postedAt: p.created_at,
+                        tags: [p.domain],
+                    }));
+                    setLiveProjects(formatted);
+                }
+            } catch (err) {
+                console.error("Error fetching projects:", err);
+            }
+        };
+
+        fetchProjects();
+    }, []);
 
     const { interviewStatus } = useInterviewStatus();
 
@@ -88,7 +160,7 @@ const Projects = () => {
         localStorage.setItem('pyroBookmarks', JSON.stringify(bookmarkedProjectIds));
     }, [bookmarkedProjectIds]);
 
-    const toggleBookmark = (e: React.MouseEvent, id: number) => {
+    const toggleBookmark = (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
         setBookmarkedProjectIds(prev =>
             prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id]
@@ -104,7 +176,7 @@ const Projects = () => {
         }));
     }, [searchParams]);
 
-    const filteredProjects = MOCK_PROJECTS.filter(project => {
+    const filteredProjects = liveProjects.filter(project => {
         // Auto-archive rule: if older than 2 months (approx 60 days) and 0 hired positions, do not show in live projects
         const isOlderThan2Months = (Date.now() - new Date(project.postedAt).getTime()) > 60 * 24 * 60 * 60 * 1000;
         if (isOlderThan2Months && project.hiredPositions === 0) {
@@ -286,7 +358,7 @@ const Projects = () => {
                                     </div>
 
                                     <div className="flex flex-wrap gap-2 mb-6">
-                                        {project.tags.map((tag) => (
+                                        {project.tags.map((tag: string) => (
                                             <span key={tag} className="flex items-center text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                                                 <Tag className="w-3 h-3 mr-1.5 opacity-50" /> {tag}
                                             </span>
@@ -359,9 +431,10 @@ const Projects = () => {
 
             {viewingProjectId !== null && (
                 <ProjectDetailsModal
-                    isOpen={true}
+                    isOpen={viewingProjectId !== null}
                     onClose={() => setViewingProjectId(null)}
-                    projectId={viewingProjectId}
+                    projectId={viewingProjectId!}
+                    project={liveProjects.find(p => p.id === viewingProjectId)}
                     onApplyClicked={() => {
                         setViewingProjectId(null);
                         setApplyingProjectId(viewingProjectId);
@@ -371,14 +444,13 @@ const Projects = () => {
 
             {applyingProjectId !== null && (
                 <ApplicationModal
-                    isOpen={true}
+                    isOpen={applyingProjectId !== null}
                     onClose={() => setApplyingProjectId(null)}
-                    projectId={applyingProjectId}
+                    projectId={applyingProjectId!}
+                    project={liveProjects.find(p => p.id === applyingProjectId)}
                     onSubmitSuccess={() => {
-                        const savedApps = localStorage.getItem('pyroApplications');
-                        if (savedApps) {
-                            const parsedApps = JSON.parse(savedApps);
-                            setAppliedProjectIds(parsedApps.map((app: any) => app.projectId));
+                        if (applyingProjectId) {
+                            setAppliedProjectIds(prev => [...prev, applyingProjectId as string]);
                         }
                         setApplyingProjectId(null);
                         setAlertConfig({

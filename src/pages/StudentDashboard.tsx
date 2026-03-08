@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { MOCK_PROJECTS } from '../constants';
+import { supabase } from '../lib/supabase';
 import { Briefcase, CheckCircle2, Archive, Clock, Home, Banknote, Calendar, Tag, X, CalendarCheck, MessageSquare, Download, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StudentMessagingHub from '../components/student/StudentMessagingHub';
+import toast from 'react-hot-toast';
 
 const timeAgo = (dateInput?: string) => {
     if (!dateInput) return 'Recently';
@@ -22,41 +23,225 @@ const timeAgo = (dateInput?: string) => {
 };
 
 export default function StudentDashboard() {
-    const { userName, userRole } = useAuth();
+    const { userName, userRole, userId } = useAuth();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'applied' | 'interviews' | 'ongoing' | 'messages' | 'archived'>('applied');
-    const [viewingApplicationId, setViewingApplicationId] = useState<number | null>(null);
-    const [downloadingLetter, setDownloadingLetter] = useState<{ projectId: number, type: 'Offer Letter' | 'Completion Letter' } | null>(null);
-    const [threads, setThreads] = useState<any[]>(() => {
-        const saved = localStorage.getItem('pyroStudentThreads');
-        if (saved) return JSON.parse(saved);
-        return [];
-    });
+    const [viewingApplicationId, setViewingApplicationId] = useState<string | null>(null);
+    const [downloadingLetter, setDownloadingLetter] = useState<{ projectId: string, type: 'Offer Letter' | 'Completion Letter' } | null>(null);
 
-    // Read applications from localStorage
-    const savedApps = JSON.parse(localStorage.getItem('pyroApplications') || '[]');
-    const appliedProjectIds = savedApps.map((app: any) => app.projectId);
+    // Supabase connected state lists
+    const [appliedProjects, setAppliedProjects] = useState<any[]>([]);
+    const [interviewProjects, setInterviewProjects] = useState<any[]>([]);
+    const [ongoingProjects, setOngoingProjects] = useState<any[]>([]);
+    const [archivedProjects, setArchivedProjects] = useState<any[]>([]);
 
-    // Get actual project details for applied projects
-    const appliedProjects = MOCK_PROJECTS.filter(p => appliedProjectIds.includes(p.id));
+    const [threads, setThreads] = useState<any[]>([]);
 
-    const [ongoingProjects] = useState<any[]>(() => {
-        const saved = localStorage.getItem('pyroStudentOngoing');
-        if (saved) return JSON.parse(saved);
-        return [];
-    });
+    useEffect(() => {
+        let isMounted = true;
 
-    const [interviewProjects] = useState<any[]>(() => {
-        const saved = localStorage.getItem('pyroStudentInterviews');
-        if (saved) return JSON.parse(saved);
-        return [];
-    });
+        const fetchThreads = async () => {
+            if (!userId) return;
 
-    const [archivedProjects] = useState<any[]>(() => {
-        const saved = localStorage.getItem('pyroStudentArchived');
-        if (saved) return JSON.parse(saved);
-        return [];
-    });
+            try {
+                const { data: threadsData, error } = await supabase
+                    .from('message_threads')
+                    .select(`
+                        id,
+                        project_id,
+                        recruiter_id,
+                        status,
+                        created_at,
+                        updated_at,
+                        messages (
+                            id,
+                            sender_id,
+                            content,
+                            attached_file_name,
+                            created_at
+                        )
+                    `)
+                    .eq('student_id', userId)
+                    .order('updated_at', { ascending: false });
+
+                if (error) throw error;
+
+                if (isMounted && threadsData) {
+                    // Extract unique recruiter IDs to fetch their names
+                    const recruiterIds = [...new Set(threadsData.map((t: any) => t.recruiter_id))].filter(Boolean);
+
+                    let recruitersMap: Record<string, string> = {};
+                    if (recruiterIds.length > 0) {
+                        const { data: recruitersData } = await supabase
+                            .from('profiles')
+                            .select('id, name')
+                            .in('id', recruiterIds);
+
+                        if (recruitersData) {
+                            recruitersData.forEach(r => recruitersMap[r.id] = r.name);
+                        }
+                    }
+
+                    // We also need project details (role, company)
+                    const projectIds = [...new Set(threadsData.map((t: any) => t.project_id))].filter(Boolean);
+                    let projectsMap: Record<string, any> = {};
+                    if (projectIds.length > 0) {
+                        const { data: projectsData } = await supabase
+                            .from('projects')
+                            .select('id, role, recruiter_id') // We might need company logic here 
+                            .in('id', projectIds);
+
+                        if (projectsData) {
+                            projectsData.forEach(p => projectsMap[p.id] = { role: p.role });
+                        }
+                    }
+
+                    // For company name, we can also look up from profiles (since recruiters have company_name in profiles)
+                    let companyMap: Record<string, string> = {};
+                    if (recruiterIds.length > 0) {
+                        const { data: companyData } = await supabase
+                            .from('profiles')
+                            .select('id, company_name')
+                            .in('id', recruiterIds);
+
+                        if (companyData) {
+                            companyData.forEach(r => companyMap[r.id] = r.company_name);
+                        }
+                    }
+
+                    const mappedThreads = threadsData.map((t: any) => ({
+                        id: t.id,
+                        projectId: t.project_id,
+                        recruiterId: t.recruiter_id,
+                        status: t.status,
+                        projectName: projectsMap[t.project_id]?.role || 'Project',
+                        companyName: companyMap[t.recruiter_id] || 'Company',
+                        recruiterName: recruitersMap[t.recruiter_id] || 'Recruiter',
+                        messages: (t.messages || [])
+                            .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                            .map((m: any) => ({
+                                id: m.id,
+                                senderId: m.sender_id === userId ? 'student' : 'recruiter', // Student views m.sender_id === true -> 'student'
+                                text: m.content,
+                                attachedFileName: m.attached_file_name,
+                                timestamp: m.created_at
+                            }))
+                    }));
+                    setThreads(mappedThreads);
+                }
+            } catch (err) {
+                console.error("Error fetching message threads:", err);
+            }
+        };
+
+        fetchThreads();
+
+        // Subscribe to messages table inserts
+        const channel = supabase.channel('student_messages')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, fetchThreads)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'message_threads' }, fetchThreads)
+            .subscribe();
+
+        return () => {
+            isMounted = false;
+            supabase.removeChannel(channel);
+        };
+    }, [userId]);
+
+    useEffect(() => {
+        const fetchStudentData = async () => {
+            if (!userId) {
+                return;
+            }
+
+            try {
+                // Fetch applications joined with their respective projects
+                const { data: applicationsData, error } = await supabase
+                    .from('applications')
+                    .select(`
+                        id,
+                        status,
+                        cover_letter,
+                        availability,
+                        portfolio_url,
+                        created_at,
+                        projects (
+                            id,
+                            role,
+                            domain,
+                            tenure,
+                            remuneration,
+                            status,
+                            created_at
+                        )
+                    `)
+                    .eq('student_id', userId);
+
+                if (error) throw error;
+
+                const applied: any[] = [];
+                const interviews: any[] = [];
+                const ongoing: any[] = [];
+                const archived: any[] = [];
+
+                if (applicationsData) {
+                    applicationsData.forEach(app => {
+                        // Reshape to fit expected UI format (using project data)
+                        const prj = Array.isArray(app.projects) ? app.projects[0] : app.projects;
+                        if (!prj) return; // safety
+
+                        const mappedProject = {
+                            id: prj.id,
+                            title: prj.role,
+                            category: prj.domain,
+                            duration: prj.tenure,
+                            remuneration: prj.remuneration,
+                            type: 'Remote', // Hardcoded or extracted mapping
+                            company: 'Unspecified Company', // fallback since company might not be in projects schema directly (was mock data)
+                            tags: [prj.domain, "React", "Node.js"], // mock tags
+                            postedAt: prj.created_at,
+                            applicationDetails: {
+                                coverLetter: app.cover_letter,
+                                availability: app.availability,
+                                portfolioUrl: app.portfolio_url,
+                                appliedAt: app.created_at
+                            }
+                        };
+
+                        switch (app.status) {
+                            case 'pending':
+                                applied.push(mappedProject);
+                                break;
+                            case 'accepted':
+                                interviews.push(mappedProject);
+                                break;
+                            case 'working':
+                                ongoing.push(mappedProject);
+                                break;
+                            case 'completed':
+                            case 'rejected':
+                                archived.push({
+                                    ...mappedProject,
+                                    archiveStatus: app.status === 'completed' ? 'Completed' : 'Rejected',
+                                    archiveStatusColor: app.status === 'completed' ? 'text-green-500 bg-green-500/10' : 'text-red-500 bg-red-500/10'
+                                });
+                                break;
+                        }
+                    });
+                }
+
+                setAppliedProjects(applied);
+                setInterviewProjects(interviews);
+                setOngoingProjects(ongoing);
+                setArchivedProjects(archived);
+            } catch (err: any) {
+                console.error("Error fetching student dashboard:", err);
+                toast.error("Failed to load your applications.");
+            }
+        };
+
+        fetchStudentData();
+    }, [userId]);
 
     if (userRole !== 'student') {
         return (
@@ -66,7 +251,7 @@ export default function StudentDashboard() {
         );
     }
 
-    const renderProjectsList = (projects: typeof MOCK_PROJECTS, emptyMessage: string, iconType: 'archive' | 'rejected' | 'briefcase' = 'briefcase') => {
+    const renderProjectsList = (projects: any[], emptyMessage: string, iconType: 'archive' | 'rejected' | 'briefcase' = 'briefcase') => {
         if (projects.length === 0) {
             return (
                 <div className="col-span-full py-20 px-6 glass-card text-center flex flex-col items-center justify-center border border-dashed border-slate-300 dark:border-slate-700 animate-in fade-in slide-in-from-bottom-8 duration-500">
@@ -141,7 +326,7 @@ export default function StudentDashboard() {
                         </div>
 
                         <div className="flex flex-wrap gap-2 mb-4 mt-auto">
-                            {project.tags.slice(0, 3).map((tag) => (
+                            {project.tags.slice(0, 3).map((tag: string) => (
                                 <span key={tag} className="flex items-center text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700">
                                     <Tag className="w-3 h-3 mr-1 opacity-50" /> {tag}
                                 </span>
@@ -310,8 +495,8 @@ export default function StudentDashboard() {
                         {activeTab === 'applied' && renderProjectsList(appliedProjects, "You haven't applied to any live projects yet. Start hunting to build your portfolio!", 'briefcase')}
                         {activeTab === 'interviews' && renderProjectsList(interviewProjects, "You don't have any scheduled interviews right now. Keep applying to land one!", 'briefcase')}
                         {activeTab === 'ongoing' && renderProjectsList(ongoingProjects, "You aren't currently part of any active selections. Your time will come!", 'briefcase')}
-                        {activeTab === 'messages' && <StudentMessagingHub threads={threads} setThreads={setThreads} />}
-                        {activeTab === 'archived' && renderProjectsList(archivedProjects as any, "None of your recent applications have been archived yet.", 'archive')}
+                        {activeTab === 'messages' && <StudentMessagingHub threads={threads} />}
+                        {activeTab === 'archived' && renderProjectsList(archivedProjects, "None of your recent applications have been archived yet.", 'archive')}
                     </div>
                 </div>
             </div>
@@ -330,7 +515,7 @@ export default function StudentDashboard() {
                                     Application Details
                                 </h2>
                                 <p className="text-sm font-medium text-brand-600 dark:text-brand-400 mt-0.5">
-                                    {MOCK_PROJECTS.find(p => p.id === viewingApplicationId)?.title} at {MOCK_PROJECTS.find(p => p.id === viewingApplicationId)?.company}
+                                    {appliedProjects.find(p => p.id === viewingApplicationId)?.title || archivedProjects.find(p => p.id === viewingApplicationId)?.title} at {appliedProjects.find(p => p.id === viewingApplicationId)?.company || archivedProjects.find(p => p.id === viewingApplicationId)?.company}
                                 </p>
                             </div>
                             <button
@@ -342,31 +527,32 @@ export default function StudentDashboard() {
                         </div>
                         <div className="p-6 max-h-[70vh] overflow-y-auto hide-scrollbar space-y-6">
                             {(() => {
-                                const app = savedApps.find((a: any) => a.projectId === viewingApplicationId);
-                                if (!app) return <p>Application not found.</p>;
+                                const appProject = [...appliedProjects, ...interviewProjects, ...ongoingProjects, ...archivedProjects].find((a: any) => a.id === viewingApplicationId);
+                                if (!appProject || !appProject.applicationDetails) return <p>Application not found.</p>;
+                                const appDetails = appProject.applicationDetails;
                                 return (
                                     <>
                                         <div>
                                             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Cover Letter</h3>
                                             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
-                                                {app.coverLetter}
+                                                {appDetails.coverLetter}
                                             </div>
                                         </div>
-                                        {app.portfolioUrl && (
+                                        {appDetails.portfolioUrl && (
                                             <div>
                                                 <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Portfolio URL</h3>
-                                                <a href={app.portfolioUrl} target="_blank" rel="noopener noreferrer" className="text-brand-600 dark:text-brand-400 hover:underline">
-                                                    {app.portfolioUrl}
+                                                <a href={appDetails.portfolioUrl} target="_blank" rel="noopener noreferrer" className="text-brand-600 dark:text-brand-400 hover:underline">
+                                                    {appDetails.portfolioUrl}
                                                 </a>
                                             </div>
                                         )}
                                         <div>
                                             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Availability</h3>
-                                            <p className="text-slate-700 dark:text-slate-300 capitalize">{app.availability.replace(/_/g, ' ')}</p>
+                                            <p className="text-slate-700 dark:text-slate-300 capitalize">{appDetails.availability.replace(/_/g, ' ')}</p>
                                         </div>
                                         <div>
                                             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Applied On</h3>
-                                            <p className="text-slate-700 dark:text-slate-300">{new Date(app.appliedAt).toLocaleDateString()}</p>
+                                            <p className="text-slate-700 dark:text-slate-300">{new Date(appDetails.appliedAt).toLocaleDateString()}</p>
                                         </div>
                                     </>
                                 );
