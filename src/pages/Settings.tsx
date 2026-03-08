@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { User, Briefcase, Mail, Globe, Save, Lock, Building2, BookOpen, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import { checkFormForProfanityAsync } from '../utils/profanityFilter';
 import ProfanityWarningModal from '../components/ProfanityWarningModal';
+import toast from 'react-hot-toast';
 
 // DOMAINS reference duplicated from the profile form logic
 const DOMAINS = [
@@ -26,6 +27,7 @@ const Settings = () => {
     const [companyWebsite, setCompanyWebsite] = useState('https://acme.com');
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
 
     // Student specific variables
     const [college, setCollege] = useState(localStorage.getItem('studentCollege') || '');
@@ -33,13 +35,14 @@ const Settings = () => {
     const [resumeUrl, setResumeUrl] = useState(localStorage.getItem('studentResumeUrl') || '');
 
     const [isSaving, setIsSaving] = useState(false);
-    const [successMessage, setSuccessMessage] = useState('');
     const [error, setError] = useState('');
+
+    const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+    const [passwordError, setPasswordError] = useState('');
 
     const handleSaveProfile = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        setSuccessMessage('');
 
         // Basic Empty Field Validation
         if (!name) {
@@ -81,36 +84,42 @@ const Settings = () => {
             }
 
             setIsSaving(false);
-            setSuccessMessage('Profile details updated successfully.');
-
-            // Clear success message after 3 seconds
-            setTimeout(() => setSuccessMessage(''), 3000);
+            toast.success('Profile details updated successfully.');
         }, 1000);
     };
 
     const handlePasswordChange = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
-        setSuccessMessage('');
+        setPasswordError('');
 
-        if (!currentPassword || !newPassword) {
-            setError('Please provide both current and new passwords.');
+        if (!currentPassword || !newPassword || !confirmNewPassword) {
+            setPasswordError('Please fill out all password fields.');
             return;
         }
 
-        if (newPassword.length < 8) {
-            setError('New password must be at least 8 characters long.');
+        if (newPassword !== confirmNewPassword) {
+            setPasswordError('New passwords do not match.');
             return;
         }
+
+        if (newPassword.length < 6) {
+            setPasswordError('New password must be at least 6 characters long.');
+            return;
+        }
+
+        setIsUpdatingPassword(true);
 
         try {
             await updatePassword(currentPassword, newPassword);
             setCurrentPassword('');
             setNewPassword('');
-            setSuccessMessage('Password changed successfully.');
-            setTimeout(() => setSuccessMessage(''), 3000);
+            setConfirmNewPassword('');
+            toast.success('Password successfully updated.');
         } catch (err: any) {
-            setError(err.message || 'Failed to update password.');
+            setPasswordError(err.message || 'Failed to update password.');
+            toast.error(err.message || 'Failed to update password.');
+        } finally {
+            setIsUpdatingPassword(false);
         }
     };
 
@@ -122,12 +131,6 @@ const Settings = () => {
                     <h1 className="text-3xl font-heading font-extrabold text-slate-900 dark:text-white mb-2">Account Settings</h1>
                     <p className="text-slate-600 dark:text-slate-400 text-sm">Update your personal information and password.</p>
                 </div>
-
-                {successMessage && (
-                    <div className="mb-6 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
-                        <p className="text-sm font-medium">{successMessage}</p>
-                    </div>
-                )}
 
                 <ProfanityWarningModal error={error} onClose={() => setError('')} />
                 {error && (
@@ -308,10 +311,17 @@ const Settings = () => {
 
                     {/* Sidebar Area: Password Change */}
                     <div className="lg:col-span-1 space-y-6">
-                        <div className="glass-card p-6 border-red-100 dark:border-red-900/30">
+                        <div className="glass-card p-6 border-red-100 dark:border-red-900/30 overflow-hidden relative">
                             <h2 className="text-lg font-bold font-heading text-slate-900 dark:text-white mb-6 border-b border-slate-100 dark:border-slate-800 pb-3">Security</h2>
 
-                            <form onSubmit={handlePasswordChange} className="space-y-4">
+                            {passwordError && (
+                                <div className="mb-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-3 py-2.5 rounded-xl flex items-start gap-2 animate-in fade-in zoom-in-95 duration-300">
+                                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                    <p className="text-xs">{passwordError}</p>
+                                </div>
+                            )}
+
+                            <form onSubmit={handlePasswordChange} className="space-y-4 relative z-10">
                                 <div>
                                     <label htmlFor="currentPassword" className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Current Password</label>
                                     <div className="relative">
@@ -346,11 +356,34 @@ const Settings = () => {
                                     </div>
                                 </div>
 
+                                <div>
+                                    <label htmlFor="confirmNewPassword" className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Confirm New Password</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <Lock className="h-4 w-4 text-slate-400" />
+                                        </div>
+                                        <input
+                                            id="confirmNewPassword"
+                                            type="password"
+                                            value={confirmNewPassword}
+                                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                            required
+                                            className="block w-full pl-9 pr-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all font-medium"
+                                        />
+                                    </div>
+                                </div>
+
                                 <button
                                     type="submit"
-                                    className="w-full mt-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white py-2 px-4 rounded-lg text-sm font-semibold transition-colors border border-slate-200 dark:border-slate-700"
+                                    disabled={isUpdatingPassword || !currentPassword || !newPassword || !confirmNewPassword}
+                                    className="w-full mt-2 flex justify-center items-center py-2 px-4 shadow-sm border border-transparent rounded-lg text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all disabled:opacity-70 disabled:hover:bg-slate-900 dark:disabled:hover:bg-slate-100 btn-interactive"
                                 >
-                                    Update Password
+                                    {isUpdatingPassword ? (
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    ) : 'Update Password'}
                                 </button>
                             </form>
                         </div>
