@@ -18,11 +18,48 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import ScrollToTop from './components/ScrollToTop';
 
-const ProtectedStudentRoute = ({ children }: { children: React.ReactNode }) => {
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, userRole, hasCompletedProfile } = useAuth();
 
   if (!isAuthenticated) return <Navigate to="/login" />;
   if (userRole === 'student' && !hasCompletedProfile) return <Navigate to="/student-profile-setup" replace />;
+
+  return <>{children}</>;
+};
+
+const ProtectedRecruiterRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, userRole } = useAuth();
+
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  if (userRole !== 'recruiter') return <Navigate to="/" replace />;
+  // Optionally, if recruiters ever need profile completion, we'd check it here.
+
+  return <>{children}</>;
+};
+
+const StudentOrPublicRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, userRole } = useAuth();
+
+  // Recruiters should not see the student/public project board
+  if (isAuthenticated && userRole === 'recruiter') return <Navigate to="/dashboard/recruiter" replace />;
+
+  return <>{children}</>;
+};
+
+// Protects auth routes from being accessed by users who are already logged in
+const AuthRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, userRole, hasCompletedProfile } = useAuth();
+
+  if (isAuthenticated) {
+    if (userRole === 'recruiter') {
+      return <Navigate to="/dashboard/recruiter" replace />;
+    } else {
+      if (!hasCompletedProfile) {
+        return <Navigate to="/student-profile-setup" replace />;
+      }
+      return <Navigate to="/dashboard/student" replace />;
+    }
+  }
 
   return <>{children}</>;
 };
@@ -46,19 +83,19 @@ function App() {
           <Navbar />
           <main className="flex-grow">
             <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/projects" element={<Projects />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/auth/v1/update-password" element={<ResetPassword />} />
+              <Route path="/" element={<StudentOrPublicRoute><Home /></StudentOrPublicRoute>} />
+              <Route path="/projects" element={<StudentOrPublicRoute><Projects /></StudentOrPublicRoute>} />
+              <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
+              <Route path="/register" element={<AuthRoute><Register /></AuthRoute>} />
+              <Route path="/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
+              <Route path="/reset-password" element={<AuthRoute><ResetPassword /></AuthRoute>} />
+              <Route path="/auth/v1/update-password" element={<AuthRoute><ResetPassword /></AuthRoute>} />
               <Route path="/auth/v1/callback" element={<AuthCallback />} />
               <Route path="/student-profile-setup" element={<StudentProfileForm />} />
-              <Route path="/dashboard/student" element={<ProtectedStudentRoute><StudentDashboard /></ProtectedStudentRoute>} />
-              <Route path="/completed-projects" element={<ProtectedStudentRoute><CompletedProjects /></ProtectedStudentRoute>} />
-              <Route path="/dashboard/recruiter" element={<RecruiterDashboard />} />
-              <Route path="/settings" element={<Settings />} />
+              <Route path="/dashboard/student" element={<ProtectedRoute><StudentDashboard /></ProtectedRoute>} />
+              <Route path="/completed-projects" element={<ProtectedRoute><CompletedProjects /></ProtectedRoute>} />
+              <Route path="/dashboard/recruiter" element={<ProtectedRecruiterRoute><RecruiterDashboard /></ProtectedRecruiterRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
               {/* Catch-all route for unknown paths */}
               <Route path="*" element={<Home />} />

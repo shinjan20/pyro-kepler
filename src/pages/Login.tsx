@@ -31,7 +31,12 @@ const Login = () => {
                 if (type === 'recruiter') {
                     navigate('/dashboard/recruiter');
                 } else {
-                    navigate(returnTo || '/dashboard/student');
+                    const isCompleted = localStorage.getItem('hasCompletedProfile') === 'true';
+                    if (!isCompleted) {
+                        navigate('/student-profile-setup');
+                    } else {
+                        navigate(returnTo || '/dashboard/student');
+                    }
                 }
             } else {
                 setError('Please enter both email and password.');

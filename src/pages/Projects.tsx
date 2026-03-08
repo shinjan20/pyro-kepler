@@ -310,7 +310,10 @@ const Projects = () => {
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             if (!hasCompletedProfile) {
-                                                                navigate('/dashboard/student');
+                                                                import('react-hot-toast').then(({ default: toast }) => {
+                                                                    toast.error('Please complete your profile first before applying to projects.');
+                                                                });
+                                                                navigate('/student-profile-setup');
                                                                 return;
                                                             }
                                                             setApplyingProjectId(project.id);

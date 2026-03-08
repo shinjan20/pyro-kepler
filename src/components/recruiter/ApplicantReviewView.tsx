@@ -8,9 +8,10 @@ interface ApplicantReviewViewProps {
     onDecline: (candidateId: string) => void;
     isArchived?: boolean;
     onRevert?: (candidateId: string) => void;
+    isMaxCapacity?: boolean;
 }
 
-const ApplicantReviewView = ({ candidate, onClose, onAccept, onDecline, isArchived = false, onRevert }: ApplicantReviewViewProps) => {
+const ApplicantReviewView = ({ candidate, onClose, onAccept, onDecline, isArchived = false, onRevert, isMaxCapacity = false }: ApplicantReviewViewProps) => {
     return (
         <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-lg mt-4 animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
@@ -103,9 +104,14 @@ const ApplicantReviewView = ({ candidate, onClose, onAccept, onDecline, isArchiv
                                     </button>
                                     <button
                                         onClick={() => onAccept(candidate.id)}
-                                        className="flex-1 py-3 flex items-center justify-center gap-2 text-white bg-brand-600 rounded-xl hover:bg-brand-500 transition-colors shadow-md shadow-brand-500/20 font-bold btn-interactive"
+                                        disabled={isMaxCapacity}
+                                        title={isMaxCapacity ? "Project has reached maximum capacity" : ""}
+                                        className={`flex-1 py-3 flex items-center justify-center gap-2 rounded-xl transition-colors font-bold btn-interactive ${isMaxCapacity
+                                                ? "bg-slate-300 text-slate-500 cursor-not-allowed dark:bg-slate-700 dark:text-slate-400"
+                                                : "text-white bg-brand-600 hover:bg-brand-500 shadow-md shadow-brand-500/20"
+                                            }`}
                                     >
-                                        <CheckCircle className="w-5 h-5" /> Accept Candidate
+                                        <CheckCircle className="w-5 h-5" /> {isMaxCapacity ? 'Capacity Reached' : 'Accept Candidate'}
                                     </button>
                                 </>
                             )}

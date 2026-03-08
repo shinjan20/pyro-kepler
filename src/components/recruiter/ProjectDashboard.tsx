@@ -238,6 +238,7 @@ const ProjectDashboard = ({ isOpen, onClose, project, onArchive, onAcceptCandida
                                     if (onRevertCandidate) onRevertCandidate(project.id, id);
                                     setReviewingCandidate(null);
                                 }}
+                                isMaxCapacity={(project.workingCandidates?.length || 0) >= (project.positions || 1)}
                             />
                         </div>
                     ) : reviewingWorkingCandidate ? (
