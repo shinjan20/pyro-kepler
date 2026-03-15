@@ -1,14 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Briefcase, FileText, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { X, FileText, CheckCircle2, Briefcase, AlertTriangle } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { DOMAINS } from '../../constants';
 import { checkFormForProfanityAsync } from '../../utils/profanityFilter';
 import ProfanityWarningModal from '../ProfanityWarningModal';
+import { useAuth } from '../../contexts/AuthContext';
+
+export interface ProjectFormData {
+    id?: string;
+    role: string;
+    domain: string;
+    objective: string;
+    expectations: string;
+    positions: string | number;
+    tenure: string | number;
+    remuneration: string | number;
+    attachmentName?: string;
+    [key: string]: any;
+}
 
 interface PostProjectModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (projectData: any) => void;
-    editingProject?: any;
+    onSubmit: (projectData: ProjectFormData) => Promise<void> | void;
+    editingProject?: ProjectFormData | null;
 }
 
 const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostProjectModalProps) => {
@@ -27,6 +42,19 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
     const [isSuccess, setIsSuccess] = useState(false);
     const [error, setError] = useState('');
     const modalRef = useRef<HTMLDivElement>(null);
+    const { userId } = useAuth();
+    
+    const draftKey = `project_draft_${userId}`;
+
+    // Auto-save draft whenever formData changes (only for new projects)
+    useEffect(() => {
+        if (!editingProject && isOpen && formData.role) {
+            const timeoutId = setTimeout(() => {
+                localStorage.setItem(draftKey, JSON.stringify(formData));
+            }, 500); // Debounce to avoid excessive writes
+            return () => clearTimeout(timeoutId);
+        }
+    }, [formData, editingProject, isOpen, draftKey]);
 
     useEffect(() => {
         if (error && modalRef.current) {
@@ -44,11 +72,22 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                 customDomain: isStandardDomain ? '' : (editingProject.domain || ''),
                 objective: editingProject.objective || '',
                 expectations: editingProject.expectations || '',
-                tenure: editingProject.tenure || '',
-                remuneration: editingProject.remuneration || '0',
-                positions: editingProject.positions || '1',
+                tenure: editingProject.tenure ? String(editingProject.tenure) : '',
+                remuneration: editingProject.remuneration !== undefined ? String(editingProject.remuneration) : '0',
+                positions: editingProject.positions ? String(editingProject.positions) : '1',
                 attachmentName: editingProject.attachmentName || ''
             });
+        } else if (isOpen && !editingProject) {
+            // Check for existing draft
+            try {
+                const savedDraft = localStorage.getItem(draftKey);
+                if (savedDraft) {
+                    const parsedDraft = JSON.parse(savedDraft);
+                    setFormData(parsedDraft);
+                }
+            } catch (e) {
+                console.error("Failed to load draft");
+            }
         } else if (!isOpen) {
             setFormData({ role: '', domain: '', customDomain: '', objective: '', expectations: '', tenure: '', remuneration: '0', positions: '1', attachmentName: '' });
             setIsSuccess(false);
@@ -101,19 +140,35 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
             return;
         }
 
-        // Simulate API call
-        setTimeout(() => {
-            setIsSubmitting(false);
+        try {
+            const submitData = { ...formData, domain: finalDomain };
+            await onSubmit(submitData);
             setIsSuccess(true);
+            
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b']
+            });
+            
+            // Clear draft on successful submission
+            if (!editingProject) {
+                localStorage.removeItem(draftKey);
+            }
+
             setTimeout(() => {
-                const submitData = { ...formData, domain: finalDomain };
-                onSubmit(submitData);
                 setFormData({ role: '', domain: '', customDomain: '', objective: '', expectations: '', tenure: '', remuneration: '0', positions: '1', attachmentName: '' });
                 setIsSuccess(false);
                 setError('');
                 onClose();
-            }, 1000);
-        }, 1500);
+            }, 2500);
+        } catch (err: unknown) {
+            console.error("Project submission error:", err);
+            setError(err instanceof Error ? err.message : 'Failed to save project.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (

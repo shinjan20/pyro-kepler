@@ -69,7 +69,7 @@ const Projects = () => {
 
     // Bookmarks State
     const [bookmarkedProjectIds, setBookmarkedProjectIds] = useState<string[]>(() => {
-        const saved = localStorage.getItem('pyroBookmarks');
+        const saved = localStorage.getItem(`pyroBookmarks_${userId || 'guest'}`);
         return saved ? JSON.parse(saved) : [];
     });
 
@@ -80,18 +80,30 @@ const Projects = () => {
     const [liveProjects, setLiveProjects] = useState<any[]>([]);
 
     useEffect(() => {
-        const fetchApplied = async () => {
+        const fetchUserData = async () => {
             if (userRole === 'student' && userId) {
-                const { data } = await supabase
+                // Fetch applied projects
+                const { data: appsData } = await supabase
                     .from('applications')
                     .select('project_id')
                     .eq('student_id', userId);
-                if (data) {
-                    setAppliedProjectIds(data.map(a => a.project_id));
+                if (appsData) {
+                    setAppliedProjectIds(appsData.map(a => a.project_id));
+                }
+
+                // Fetch persistent bookmarks from profile
+                const { data: profileData } = await supabase
+                    .from('profiles')
+                    .select('bookmarked_projects')
+                    .eq('id', userId)
+                    .single();
+                
+                if (profileData && profileData.bookmarked_projects) {
+                    setBookmarkedProjectIds(profileData.bookmarked_projects);
                 }
             }
         };
-        fetchApplied();
+        fetchUserData();
     }, [userId, userRole]);
 
     useEffect(() => {
@@ -157,14 +169,40 @@ const Projects = () => {
     const { interviewStatus } = useInterviewStatus();
 
     useEffect(() => {
-        localStorage.setItem('pyroBookmarks', JSON.stringify(bookmarkedProjectIds));
-    }, [bookmarkedProjectIds]);
+        // Fallback for non-logged in users or fast local cache
+        localStorage.setItem(`pyroBookmarks_${userId || 'guest'}`, JSON.stringify(bookmarkedProjectIds));
+    }, [bookmarkedProjectIds, userId]);
 
-    const toggleBookmark = (e: React.MouseEvent, id: string) => {
+    const toggleBookmark = async (e: React.MouseEvent, projectId: string) => {
         e.stopPropagation();
-        setBookmarkedProjectIds(prev =>
-            prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id]
-        );
+        if (!userId) {
+            // Only unauthenticated handle locally
+            setBookmarkedProjectIds(prev =>
+                prev.includes(projectId) ? prev.filter(b => b !== projectId) : [...prev, projectId]
+            );
+            return;
+        }
+
+        const isCurrentlyBookmarked = bookmarkedProjectIds.includes(projectId);
+        const newBookmarks = isCurrentlyBookmarked
+            ? bookmarkedProjectIds.filter(b => b !== projectId)
+            : [...bookmarkedProjectIds, projectId];
+
+        // Optimistic UI update
+        setBookmarkedProjectIds(newBookmarks);
+
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ bookmarked_projects: newBookmarks })
+                .eq('id', userId);
+            
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error updating bookmarks:', error);
+            // Revert optimistic update on failure
+            setBookmarkedProjectIds(bookmarkedProjectIds);
+        }
     };
 
     // Watch for URL search parameter changes (bookmarks toggle)

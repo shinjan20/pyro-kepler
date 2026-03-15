@@ -1,17 +1,26 @@
 import { useState } from 'react';
-import { X, Send, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import { X, Send, Link as LinkIcon, AlertCircle, Sparkles, Activity } from 'lucide-react';
 import { MOCK_PROJECTS } from '../../constants';
 import { checkFormForProfanityAsync } from '../../utils/profanityFilter';
 import ProfanityWarningModal from '../ProfanityWarningModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
+import { calculateMatchScore } from '../../utils/aiMatch';
 
 interface ApplicationModalProps {
     isOpen: boolean;
     onClose: () => void;
     projectId: string | number; // Support string for UUIDs from Supabase
-    project?: any;
+    project?: {
+        id?: string | number;
+        title?: string;
+        company?: string;
+        duration?: string;
+        type?: string;
+        tags?: string[];
+        [key: string]: any;
+    };
     onSubmitSuccess: () => void;
 }
 
@@ -29,6 +38,9 @@ export default function ApplicationModal({ isOpen, onClose, projectId, project: 
     const [availability, setAvailability] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
+    const [matchScore, setMatchScore] = useState<number | null>(null);
+    const [matchFeedback, setMatchFeedback] = useState<string>('');
+    const [isCalculatingScore, setIsCalculatingScore] = useState(false);
 
     if (!project) return null;
 
@@ -85,12 +97,47 @@ export default function ApplicationModal({ isOpen, onClose, projectId, project: 
 
             toast.success('Application submitted successfully!');
             onSubmitSuccess();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Application error:', err);
-            toast.error(err.message || 'Failed to submit application.');
-            setError(err.message || 'Failed to submit application.');
+            const errorMessage = err instanceof Error ? err.message : 'Failed to submit application.';
+            toast.error(errorMessage);
+            setError(errorMessage);
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleCalculateScore = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        
+        if (!coverLetter) {
+            toast.error('Please write a cover letter first to calculate your match score.');
+            return;
+        }
+
+        setIsCalculatingScore(true);
+        setMatchScore(null);
+        setMatchFeedback('');
+        
+        try {
+            // We need a brief representation of the user. Ideally from a DB, but we will mock briefly if not available.
+            const { data: profile } = await supabase.from('profiles').select('skills, domain, college').eq('id', userId).single();
+            const profileStr = profile ? `Domain: ${profile.domain}, Skills: ${profile.skills?.join(', ')}, College: ${profile.college}` : 'Standard Student Profile';
+            
+            const result = await calculateMatchScore(
+                profileStr,
+                coverLetter,
+                project.title || 'Role',
+                project.category || 'Category',
+                project.tags?.join(', ') || ''
+            );
+            
+            setMatchScore(result.score);
+            setMatchFeedback(result.feedback);
+        } catch (err: any) {
+            toast.error('Could not calculate AI Match Score at this time.');
+        } finally {
+            setIsCalculatingScore(false);
         }
     };
 
@@ -147,7 +194,7 @@ export default function ApplicationModal({ isOpen, onClose, projectId, project: 
                                 Why should we hire you? <span className="text-red-500">*</span>
                             </label>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                                Highlight your matching skills ({project.tags.join(', ')}) and any related past projects.
+                                Highlight your matching skills ({project.tags?.join(', ') || 'required skills'}) and any related past projects.
                             </p>
                             <textarea
                                 required
@@ -157,6 +204,60 @@ export default function ApplicationModal({ isOpen, onClose, projectId, project: 
                                 className="block w-full px-4 py-3 border border-slate-300 dark:border-slate-700 rounded-xl bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all resize-none"
                                 placeholder={`I'm a great fit for the ${project.title} role because...`}
                             />
+                            
+                            {/* AI Match Score Feature */}
+                            <div className="mt-3">
+                                {!matchScore && !isCalculatingScore && (
+                                    <button
+                                        type="button"
+                                        onClick={handleCalculateScore}
+                                        disabled={!coverLetter}
+                                        className="flex items-center gap-2 text-xs font-semibold px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <Sparkles className="w-3.5 h-3.5" />
+                                        Calculate AI Match Score
+                                    </button>
+                                )}
+                                
+                                {isCalculatingScore && (
+                                    <div className="flex items-center gap-2 text-xs font-semibold px-4 py-2 bg-slate-50 dark:bg-slate-800 text-slate-500 rounded-lg border border-slate-200 dark:border-slate-700">
+                                        <div className="w-3.5 h-3.5 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
+                                        Analyzing fit...
+                                    </div>
+                                )}
+
+                                {matchScore !== null && (
+                                    <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/10 dark:to-purple-900/10 border border-indigo-100 dark:border-indigo-800/30 rounded-xl">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`flex items-center justify-center w-12 h-12 rounded-full font-bold text-lg shadow-sm border ${
+                                                    matchScore >= 80 ? 'bg-green-100 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400' :
+                                                    matchScore >= 50 ? 'bg-amber-100 border-amber-200 text-amber-700 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400' :
+                                                    'bg-red-100 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400'
+                                                }`}>
+                                                    {matchScore}%
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                                                        <Activity className="w-4 h-4 text-indigo-500" />
+                                                        Profile Match Score
+                                                    </h4>
+                                                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                                                        {matchFeedback}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={handleCalculateScore}
+                                                className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 underline"
+                                            >
+                                                Recalculate
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <div>

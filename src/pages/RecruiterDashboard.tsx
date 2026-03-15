@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Briefcase, Users, PlusCircle, MapPin, Clock, FileText, Download, CheckCircle, MessageSquare } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { useLocation } from 'react-router-dom';
-import PostProjectModal from '../components/recruiter/PostProjectModal';
+import PostProjectModal, { type ProjectFormData } from '../components/recruiter/PostProjectModal';
 import StudentProfileCard, { type StudentProfile } from '../components/recruiter/StudentProfileCard';
 import StudentProfileModal from '../components/recruiter/StudentProfileModal';
 import ProjectDashboard from '../components/recruiter/ProjectDashboard';
@@ -303,7 +304,7 @@ const RecruiterDashboard = () => {
         return 0; // default
     });
 
-    const handlePostProject = async (projectData: any) => {
+    const handlePostProject = async (projectData: ProjectFormData) => {
         if (!userId) return;
 
         try {
@@ -367,10 +368,35 @@ const RecruiterDashboard = () => {
                     await supabase.from('applications').insert(applicationsToInsert);
                 }
 
-                toast.success('Project posted successfully!');
+                // Update local state temporarily for snappy UI
+                const formatProfile = (studentId: string) => ({
+                    id: studentId,
+                    name: 'Mock Student (Demo)',
+                    photoUrl: null,
+                    college: 'Demo University',
+                    domain: projectData.domain,
+                    applicationStatus: 'pending',
+                    coverLetter: "I am very interested in this role!",
+                    availability: "full_time"
+                });
 
-                // Triggers a dashboard refetch to pull in the new project and its generated applications
-                window.location.reload();
+                setActiveProjects(prev => [{
+                    id: newDbProject.id,
+                    role: newDbProject.role,
+                    domain: newDbProject.domain,
+                    objective: newDbProject.objective,
+                    expectations: newDbProject.expectations,
+                    positions: newDbProject.positions,
+                    tenure: newDbProject.tenure,
+                    remuneration: newDbProject.remuneration,
+                    status: newDbProject.status,
+                    candidates: [],
+                    appliedCandidates: randomStudents ? randomStudents.map(s => formatProfile(s.id)) : [],
+                    workingCandidates: [],
+                    archivedCandidates: []
+                }, ...prev]);
+
+                toast.success('Project posted successfully!');
             }
         } catch (err: any) {
             console.error("Error saving project:", err);
@@ -830,6 +856,13 @@ const RecruiterDashboard = () => {
                         };
 
                         if (status === 'accepted') {
+                            confetti({
+                                particleCount: 150,
+                                spread: 70,
+                                origin: { y: 0.6 },
+                                colors: ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b']
+                            });
+                            
                             setCelebrationData({
                                 title: 'Candidate Hired!',
                                 message: `${candidate.name} is hired and moved to the Currently Working tab of the project. Would you like to send them an official joining letter?`,
@@ -1134,13 +1167,59 @@ const RecruiterDashboard = () => {
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-4">
-                                {filteredAndSortedProfiles.map(profile => (
-                                    <StudentProfileCard
-                                        key={profile.id}
-                                        profile={profile}
-                                        onClick={handleProfileClick}
-                                    />
-                                ))}
+                                {activeProjects.length === 0 ? (
+                                    <div className="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4 relative group rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                                        
+                                        {/* Blurred Background Grid */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-4 blur-[8px] opacity-60 pointer-events-none select-none">
+                                            {[1, 2, 3, 4].map(idx => (
+                                                <div key={idx} className="bg-white dark:bg-slate-800 h-64 rounded-xl border border-slate-200 dark:border-slate-700 p-6 flex flex-col items-center">
+                                                    <div className="w-20 h-20 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse mb-4"></div>
+                                                    <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-3/4 animate-pulse mb-2"></div>
+                                                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2 animate-pulse mb-4"></div>
+                                                    <div className="flex gap-2 w-full mt-auto">
+                                                        <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-full animate-pulse"></div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Overlay CTA */}
+                                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 bg-slate-900/10 dark:bg-slate-900/40 backdrop-blur-[2px]">
+                                            <div className="bg-white/95 dark:bg-slate-800/95 p-8 rounded-3xl shadow-2xl max-w-md text-center border border-slate-200/50 dark:border-slate-700/50 transform transition-transform group-hover:scale-105 duration-500">
+                                                <div className="bg-brand-500/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 text-brand-600 dark:text-brand-400">
+                                                    <Users className="w-8 h-8" />
+                                                </div>
+                                                <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white mb-3">
+                                                    Unlock the Talent Pool
+                                                </h3>
+                                                <p className="text-slate-600 dark:text-slate-400 text-sm mb-6 leading-relaxed">
+                                                    Post your first active project to unlock full access and message over 500+ verified student developers eager to work with you.
+                                                </p>
+                                                <button
+                                                    onClick={() => {
+                                                        setActiveTab('projects');
+                                                        setEditingProjectData(null);
+                                                        setIsPostProjectModalOpen(true);
+                                                    }}
+                                                    className="w-full inline-flex items-center justify-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-3 px-6 rounded-xl hover:-translate-y-1 hover:shadow-lg transition-all duration-300"
+                                                >
+                                                    <Briefcase className="w-5 h-5" />
+                                                    Post a Live Project
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                ) : (
+                                    filteredAndSortedProfiles.map(profile => (
+                                        <StudentProfileCard
+                                            key={profile.id}
+                                            profile={profile}
+                                            onClick={handleProfileClick}
+                                        />
+                                    ))
+                                )}
                             </div>
                         </div>
                     )}
@@ -1154,13 +1233,14 @@ const RecruiterDashboard = () => {
                                     <p className="mt-2 text-slate-500 dark:text-slate-400">Complete projects with candidates to see them here.</p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 stagger-1">
                                     {collaboratedTalent.map(collab => (
-                                        <CollaboratedTalentCard
-                                            key={collab.id}
-                                            collab={collab}
-                                            onMessageInitiated={(projectId, candidateId, message) => handleSendLetter(projectId, candidateId, 'discovery', message)}
-                                        />
+                                        <div key={collab.id} className="hover:-translate-y-1 transition-transform duration-300">
+                                            <CollaboratedTalentCard
+                                                collab={collab}
+                                                onMessageInitiated={(projectId, candidateId, message) => handleSendLetter(projectId, candidateId, 'discovery', message)}
+                                            />
+                                        </div>
                                     ))}
                                 </div>
                             )}

@@ -51,7 +51,7 @@ const ProjectDashboard = ({ isOpen, onClose, project, onArchive, onAcceptCandida
                 {candidates.map((candidate: any) => (
                     <div
                         key={candidate.id}
-                        className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center sm:items-start gap-4 hover:border-brand-500/50 hover:shadow-md cursor-pointer transition-all"
+                        className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center sm:items-start gap-4 hover:-translate-y-1 hover:border-brand-500/50 hover:shadow-lg cursor-pointer transition-all duration-300 animate-in fade-in zoom-in-95"
                         onClick={() => {
                             if (isWorkingList) {
                                 setReviewingWorkingCandidate(candidate);

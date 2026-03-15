@@ -409,7 +409,7 @@ const MessagingHub = ({ projects, threads, setThreads: _setThreads, onUpdateCand
                                 <p>{errorMessage}</p>
                             </div>
                         )}
-                        {activeThread.status === 'active' ? (
+                        {['active', 'accepted', 'working'].includes(activeThread.status) ? (
                             <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
                                 {attachedFile && (
                                     <div className="flex items-center gap-2 p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm max-w-sm self-start mb-1 animation-in fade-in">

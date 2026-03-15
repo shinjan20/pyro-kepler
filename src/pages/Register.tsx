@@ -5,6 +5,23 @@ import { useAuth } from '../contexts/AuthContext';
 import { checkFormForProfanityAsync } from '../utils/profanityFilter';
 import ProfanityWarningModal from '../components/ProfanityWarningModal';
 
+const getPasswordStrength = (pass: string): 'Weak' | 'Medium' | 'Strong' | '' => {
+    if (!pass) return '';
+    if (pass.length < 8) return 'Weak';
+    
+    let score = 0;
+    if (/[A-Z]/.test(pass)) score += 1;
+    if (/[a-z]/.test(pass)) score += 1;
+    if (/[0-9]/.test(pass)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+    
+    if (score <= 1) return 'Weak';
+    if (score === 2 || score === 3) return 'Medium';
+    if (score >= 4) return 'Strong';
+    
+    return 'Weak';
+};
+
 const Register = () => {
     const [name, setName] = useState('');
     const [companyName, setCompanyName] = useState('');
@@ -17,6 +34,8 @@ const Register = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { registerWithEmail, loginWithGoogle } = useAuth();
+    
+    const passwordStrength = getPasswordStrength(password);
 
     const isRecruiter = searchParams.get('type') === 'recruiter';
 
@@ -40,6 +59,11 @@ const Register = () => {
                     setIsLoading(false);
                     return;
                 }
+                if (passwordStrength === 'Weak') {
+                    setError('Please use a stronger password (must be at least 8 characters).');
+                    setIsLoading(false);
+                    return;
+                }
 
                 if (step === 1) {
                     await registerWithEmail(email, password, name, 'student');
@@ -56,9 +80,13 @@ const Register = () => {
             if (step === 1) {
                 if (!name || !email || !companyName || !companyWebsite || !password) {
                     setError('Please fill out all fields including password.');
+                }
+                if (passwordStrength === 'Weak') {
+                    setError('Please use a stronger password (must be at least 8 characters).');
                     setIsLoading(false);
                     return;
                 }
+
                 const publicDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'aol.com', 'icloud.com'];
                 const domain = email.split('@')[1]?.toLowerCase();
                 if (!domain || publicDomains.includes(domain)) {
@@ -74,9 +102,9 @@ const Register = () => {
                 // For recruiters on step 2, they have seen the confirmation, so we just return them to login
                 navigate('/login');
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Registration error:', err);
-            setError(err.message || 'An error occurred during registration.');
+            setError(err instanceof Error ? err.message : 'An error occurred during registration.');
             setIsLoading(false);
         }
     };
@@ -86,9 +114,9 @@ const Register = () => {
         try {
             await loginWithGoogle(isRecruiter ? 'recruiter' : 'student');
             // Redirection happens via AuthCallback.tsx
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Google Auth Error:', err);
-            setError(err.message || 'Failed to initialize Google Login.');
+            setError(err instanceof Error ? err.message : 'Failed to initialize Google Login.');
             setIsLoading(false);
         }
     };
@@ -248,9 +276,22 @@ const Register = () => {
                                             placeholder="••••••••"
                                         />
                                     </div>
-                                    <p className="mt-2 text-xs text-slate-500 ml-1">
-                                        Must be at least 8 characters long
-                                    </p>
+                                    <div className="mt-2 ml-1">
+                                        <div className="flex gap-1 h-1.5 mb-1.5 w-full">
+                                            <div className={`h-full flex-1 rounded-l-full transition-colors ${passwordStrength === 'Weak' ? 'bg-red-500' : passwordStrength === 'Medium' || passwordStrength === 'Strong' ? 'bg-amber-500' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
+                                            <div className={`h-full flex-1 transition-colors ${passwordStrength === 'Medium' ? 'bg-amber-500' : passwordStrength === 'Strong' ? 'bg-green-500' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
+                                            <div className={`h-full flex-1 rounded-r-full transition-colors ${passwordStrength === 'Strong' ? 'bg-green-500' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
+                                        </div>
+                                        {passwordStrength && (
+                                            <div className="flex justify-between items-center text-[11px] mt-1 pr-1">
+                                                <span className={`font-semibold ${passwordStrength === 'Weak' ? 'text-red-500' : passwordStrength === 'Medium' ? 'text-amber-500' : passwordStrength === 'Strong' ? 'text-green-500' : 'text-slate-500'}`}>
+                                                    {passwordStrength === 'Weak' && 'Weak - Must be 8+ chars & include letters/numbers'}
+                                                    {passwordStrength === 'Medium' && 'Medium - Add uppercase or symbols'}
+                                                    {passwordStrength === 'Strong' && 'Strong password'}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </>
                         )}

@@ -323,7 +323,8 @@ const StudentMessagingHub = ({ threads }: StudentMessagingHubProps) => {
                                 <p>{errorMessage}</p>
                             </div>
                         )}
-                        <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
+                        {['active', 'accepted', 'working'].includes(activeThread.status || 'active') ? (
+                            <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
                             {attachedFile && (
                                 <div className="flex items-center gap-2 p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm max-w-sm self-start mb-1 animation-in fade-in">
                                     <FileText className="w-4 h-4 text-slate-500" />
@@ -371,6 +372,11 @@ const StudentMessagingHub = ({ threads }: StudentMessagingHubProps) => {
                                 </button>
                             </div>
                         </form>
+                        ) : (
+                            <div className="text-center py-3 px-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-slate-500 dark:text-slate-400 text-sm font-medium border border-slate-200 dark:border-slate-800">
+                                This conversation is closed because your application was {activeThread.status}.
+                            </div>
+                        )}
                     </div>
 
                 </div>

@@ -241,6 +241,35 @@ export default function StudentDashboard() {
         };
 
         fetchStudentData();
+
+        // Subscribe to application updates for real-time notifications
+        const appsChannel = supabase.channel('student_applications')
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'applications', filter: `student_id=eq.${userId}` },
+                (payload: any) => {
+                    const newStatus = payload.new.status;
+                    const oldStatus = payload.old.status;
+                    
+                    if (newStatus !== oldStatus) {
+                        let message = `An application status was updated to ${newStatus}!`;
+                        if (newStatus === 'accepted') message = `🎉 Congratulations! You have been accepted for an interview!`;
+                        if (newStatus === 'working') message = `🚀 You've been hired! Your project is now ongoing.`;
+                        if (newStatus === 'rejected') message = `An application was politely declined. Keep trying!`;
+                        
+                        toast(message, { 
+                            icon: newStatus === 'accepted' || newStatus === 'working' ? '🎉' : '🔔',
+                            duration: 6000,
+                        });
+                        fetchStudentData(); // Refresh the list
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(appsChannel);
+        };
     }, [userId]);
 
     if (userRole !== 'student') {
@@ -254,22 +283,34 @@ export default function StudentDashboard() {
     const renderProjectsList = (projects: any[], emptyMessage: string, iconType: 'archive' | 'rejected' | 'briefcase' = 'briefcase') => {
         if (projects.length === 0) {
             return (
-                <div className="col-span-full py-20 px-6 glass-card text-center flex flex-col items-center justify-center border border-dashed border-slate-300 dark:border-slate-700 animate-in fade-in slide-in-from-bottom-8 duration-500">
-                    <div className="bg-slate-100 dark:bg-slate-800 p-5 rounded-[2rem] mb-6 shadow-inner relative flex items-center justify-center">
-                        <div className="absolute inset-0 bg-brand-500/5 rounded-[2rem] animate-pulse"></div>
-                        {iconType === 'archive' && <Archive className="w-12 h-12 text-slate-400 relative z-10" />}
-                        {iconType === 'rejected' && <XCircle className="w-12 h-12 text-slate-400 relative z-10" />}
-                        {iconType === 'briefcase' && <Briefcase className="w-12 h-12 text-slate-400 relative z-10" />}
+                <div className="col-span-full relative overflow-hidden bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-[2rem] border border-slate-200/60 dark:border-slate-800 p-8 sm:p-12 text-center flex flex-col items-center justify-center animate-in fade-in slide-in-from-bottom-8 duration-500 shadow-xl shadow-brand-500/5">
+                    {/* Decorative blobs */}
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/5 rounded-full blur-3xl pointer-events-none -mr-32 -mt-32"></div>
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl pointer-events-none -ml-32 -mb-32"></div>
+                    
+                    <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-3xl mb-6 flex items-center justify-center relative z-10 border border-slate-200 dark:border-slate-700">
+                        {iconType === 'archive' && <Archive className="w-12 h-12 text-slate-400" />}
+                        {iconType === 'rejected' && <XCircle className="w-12 h-12 text-slate-400" />}
+                        {iconType === 'briefcase' && <Briefcase className="w-12 h-12 text-brand-500" />}
                     </div>
-                    <h3 className="text-xl font-bold font-heading text-slate-900 dark:text-white mb-2">Nothing to see here</h3>
-                    <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">{emptyMessage}</p>
+                    
+                    <h3 className="text-2xl font-bold font-heading text-slate-900 dark:text-white mb-3 relative z-10">
+                        {iconType === 'briefcase' && activeTab === 'applied' ? "Ready to start your journey?" : "Nothing to see here... yet"}
+                    </h3>
+                    
+                    <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto text-lg relative z-10">
+                        {iconType === 'briefcase' && activeTab === 'applied' 
+                            ? "You haven't applied to any live projects yet. There are hundreds of active opportunities waiting for you." 
+                            : emptyMessage}
+                    </p>
 
                     {iconType === 'briefcase' && (
                         <button
                             onClick={() => navigate('/projects')}
-                            className="mt-8 px-6 py-3 bg-brand-50 hover:bg-brand-100 dark:bg-brand-900/20 dark:hover:bg-brand-900/40 text-brand-600 dark:text-brand-400 font-bold rounded-xl transition-all flex items-center gap-2 btn-interactive"
+                            className="mt-8 px-8 py-4 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-2xl shadow-xl shadow-brand-500/20 hover:-translate-y-1 transition-all duration-300 flex items-center gap-2 relative z-10 btn-interactive text-lg"
                         >
-                            Browse matching projects
+                            <CalendarCheck className="w-5 h-5" />
+                            Discover Active Projects
                         </button>
                     )}
                 </div>
@@ -382,14 +423,76 @@ export default function StudentDashboard() {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                <div className="mb-10 text-center lg:text-left">
-                    <h1 className="text-3xl md:text-5xl font-heading font-black tracking-tight text-slate-900 dark:text-white mb-2">
-                        Student <span className="text-brand-500">Dashboard</span>
-                    </h1>
-                    <p className="text-slate-600 dark:text-slate-400 text-lg">
-                        Welcome back, {userName}. Track your project applications and offers here.
-                    </p>
+                
+                {/*  --- NEW: Welcome Analytics Card --- */}
+                <div className="mb-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-[2rem] p-8 shadow-xl shadow-brand-500/5">
+                    <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
+                        
+                        <div className="flex-1">
+                            <h1 className="text-3xl md:text-5xl font-heading font-black tracking-tight text-slate-900 dark:text-white mb-3">
+                                Welcome back, <span className="text-brand-500">{userName}</span>
+                            </h1>
+                            <p className="text-slate-600 dark:text-slate-400 text-lg">
+                                Ready to take the next step in your career? Here is your current standing today.
+                            </p>
+                        </div>
+
+                        {/* Profile Completion Mini-Widget */}
+                        <div className="w-full md:w-72 bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-200 dark:border-slate-700">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Profile Strength</span>
+                                <span className="text-sm font-black text-brand-600 dark:text-brand-400">80%</span>
+                            </div>
+                            <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mb-3">
+                                <div className="h-full bg-gradient-to-r from-brand-500 to-purple-500 w-[80%] rounded-full shadow-[0_0_10px_rgba(139,92,246,0.5)]"></div>
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                You are <span className="font-semibold text-slate-700 dark:text-slate-300">20%</span> away from being an All-Star. Uploading a resume highly increases selection rates!
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Stat Pills */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-slate-200 dark:border-slate-800">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center text-brand-600 dark:text-brand-400">
+                                <Briefcase className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-black text-slate-900 dark:text-white">{appliedProjects.length}</p>
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Applications</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                                <CalendarCheck className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-black text-slate-900 dark:text-white">{interviewProjects.length}</p>
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Interviews</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-green-50 dark:bg-green-500/10 flex items-center justify-center text-green-600 dark:text-green-400">
+                                <CheckCircle2 className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-black text-slate-900 dark:text-white">{ongoingProjects.length}</p>
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Projects Hired</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                                <MessageSquare className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-black text-slate-900 dark:text-white">{threads.length}</p>
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Chats</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                {/*  --- END Welcome Analytics Card --- */}
 
                 <div className="flex flex-col lg:flex-row gap-8">
                     {/* Sidebar / Navigation Cards */}
