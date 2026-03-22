@@ -48,7 +48,8 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
 
     // Auto-save draft whenever formData changes (only for new projects)
     useEffect(() => {
-        if (!editingProject && isOpen && formData.role) {
+        const hasContent = Object.values(formData).some(val => val && val !== '0' && val !== '1');
+        if (!editingProject && isOpen && hasContent) {
             const timeoutId = setTimeout(() => {
                 localStorage.setItem(draftKey, JSON.stringify(formData));
             }, 500); // Debounce to avoid excessive writes
@@ -151,14 +152,15 @@ const PostProjectModal = ({ isOpen, onClose, onSubmit, editingProject }: PostPro
                 origin: { y: 0.6 },
                 colors: ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b']
             });
-            
             // Clear draft on successful submission
             if (!editingProject) {
                 localStorage.removeItem(draftKey);
             }
 
+            // Immediately clear the form to avoid the auto-save catching the old data before modal closes
+            setFormData({ role: '', domain: '', customDomain: '', objective: '', expectations: '', tenure: '', remuneration: '0', positions: '1', attachmentName: '' });
+
             setTimeout(() => {
-                setFormData({ role: '', domain: '', customDomain: '', objective: '', expectations: '', tenure: '', remuneration: '0', positions: '1', attachmentName: '' });
                 setIsSuccess(false);
                 setError('');
                 onClose();

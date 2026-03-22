@@ -49,10 +49,14 @@ export default function StudentDashboard() {
                     .select(`
                         id,
                         project_id,
-                        recruiter_id,
                         status,
                         created_at,
                         updated_at,
+                        projects (
+                            id,
+                            role,
+                            recruiter_id
+                        ),
                         messages (
                             id,
                             sender_id,
@@ -67,8 +71,13 @@ export default function StudentDashboard() {
                 if (error) throw error;
 
                 if (isMounted && threadsData) {
-                    // Extract unique recruiter IDs to fetch their names
-                    const recruiterIds = [...new Set(threadsData.map((t: any) => t.recruiter_id))].filter(Boolean);
+                    // We need to extract the recruiter IDs from the related projects 
+                    const extractProjectData = (prj: any) => Array.isArray(prj) ? prj[0] : prj;
+                    
+                    const recruiterIds = [...new Set(threadsData.map((t: any) => {
+                        const prj = extractProjectData(t.projects);
+                        return prj ? prj.recruiter_id : null;
+                    }))].filter(Boolean);
 
                     let recruitersMap: Record<string, string> = {};
                     if (recruiterIds.length > 0) {
@@ -82,21 +91,6 @@ export default function StudentDashboard() {
                         }
                     }
 
-                    // We also need project details (role, company)
-                    const projectIds = [...new Set(threadsData.map((t: any) => t.project_id))].filter(Boolean);
-                    let projectsMap: Record<string, any> = {};
-                    if (projectIds.length > 0) {
-                        const { data: projectsData } = await supabase
-                            .from('projects')
-                            .select('id, role, recruiter_id') // We might need company logic here 
-                            .in('id', projectIds);
-
-                        if (projectsData) {
-                            projectsData.forEach(p => projectsMap[p.id] = { role: p.role });
-                        }
-                    }
-
-                    // For company name, we can also look up from profiles (since recruiters have company_name in profiles)
                     let companyMap: Record<string, string> = {};
                     if (recruiterIds.length > 0) {
                         const { data: companyData } = await supabase
@@ -109,24 +103,29 @@ export default function StudentDashboard() {
                         }
                     }
 
-                    const mappedThreads = threadsData.map((t: any) => ({
-                        id: t.id,
-                        projectId: t.project_id,
-                        recruiterId: t.recruiter_id,
-                        status: t.status,
-                        projectName: projectsMap[t.project_id]?.role || 'Project',
-                        companyName: companyMap[t.recruiter_id] || 'Company',
-                        recruiterName: recruitersMap[t.recruiter_id] || 'Recruiter',
-                        messages: (t.messages || [])
-                            .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-                            .map((m: any) => ({
-                                id: m.id,
-                                senderId: m.sender_id === userId ? 'student' : 'recruiter', // Student views m.sender_id === true -> 'student'
-                                text: m.content,
-                                attachedFileName: m.attached_file_name,
-                                timestamp: m.created_at
-                            }))
-                    }));
+                    const mappedThreads = threadsData.map((t: any) => {
+                        const prj = extractProjectData(t.projects);
+                        const rId = prj ? prj.recruiter_id : null;
+                        
+                        return {
+                            id: t.id,
+                            projectId: t.project_id,
+                            recruiterId: rId,
+                            status: t.status,
+                            projectName: prj ? prj.role : 'Project',
+                            companyName: rId ? companyMap[rId] : 'Company',
+                            recruiterName: rId ? recruitersMap[rId] : 'Recruiter',
+                            messages: (t.messages || [])
+                                .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                                .map((m: any) => ({
+                                    id: m.id,
+                                    senderId: m.sender_id === userId ? 'student' : 'recruiter',
+                                    text: m.content,
+                                    attachedFileName: m.attached_file_name,
+                                    timestamp: m.created_at
+                                }))
+                        };
+                    });
                     setThreads(mappedThreads);
                 }
             } catch (err) {

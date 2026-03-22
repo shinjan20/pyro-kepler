@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { User, Briefcase, Mail, Globe, Save, Lock, Building2, BookOpen, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import { checkFormForProfanityAsync } from '../utils/profanityFilter';
 import ProfanityWarningModal from '../components/ProfanityWarningModal';
+import { getPasswordStrength, type PasswordStrength } from '../utils/passwordStrength';
 
 // DOMAINS reference duplicated from the profile form logic
 const DOMAINS = [
@@ -17,15 +18,16 @@ const DOMAINS = [
 ];
 
 const Settings = () => {
-    const { userRole, userName, login, updatePassword } = useAuth();
+    const { userRole, userName, userEmail, login, updatePassword } = useAuth();
 
     // Form State
     const [name, setName] = useState(userName);
-    const [email, setEmail] = useState('user@example.com'); // Mock current email
+    const [email, setEmail] = useState(userEmail || '');
     const [companyName, setCompanyName] = useState('Acme Corp'); // Mock company data
     const [companyWebsite, setCompanyWebsite] = useState('https://acme.com');
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
+    const [passwordStrength, setPasswordStrength] = useState<PasswordStrength | null>(null);
 
     // Student specific variables
     const [college, setCollege] = useState(localStorage.getItem('studentCollege') || '');
@@ -88,6 +90,16 @@ const Settings = () => {
         }, 1000);
     };
 
+    const handleNewPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const password = e.target.value;
+        setNewPassword(password);
+        if (password) {
+            setPasswordStrength(getPasswordStrength(password));
+        } else {
+            setPasswordStrength(null);
+        }
+    };
+
     const handlePasswordChange = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -98,8 +110,8 @@ const Settings = () => {
             return;
         }
 
-        if (newPassword.length < 8) {
-            setError('New password must be at least 8 characters long.');
+        if (passwordStrength === 'Weak') {
+            setError('Please choose a stronger password.');
             return;
         }
 
@@ -107,10 +119,17 @@ const Settings = () => {
             await updatePassword(currentPassword, newPassword);
             setCurrentPassword('');
             setNewPassword('');
+            setPasswordStrength(null);
             setSuccessMessage('Password changed successfully.');
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (err: any) {
-            setError(err.message || 'Failed to update password.');
+            // Note: If logged in with Google/OAuth, they won't have a password set to update.
+            console.error("Password update error:", err);
+            if (err.message?.includes("User not authenticated") || err.message?.includes("Incorrect current password")) {
+                setError('Incorrect current password, or your account relies on Google Login and has no password.');
+            } else {
+                setError(err.message || 'Failed to update password.');
+            }
         }
     };
 
@@ -339,11 +358,29 @@ const Settings = () => {
                                             id="newPassword"
                                             type="password"
                                             value={newPassword}
-                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            onChange={handleNewPasswordChange}
                                             required
                                             className="block w-full pl-9 pr-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all font-medium"
                                         />
                                     </div>
+                                    {newPassword && passwordStrength && (
+                                        <div className="mt-2.5 space-y-2 animate-in fade-in duration-300">
+                                            <div className="flex gap-1 h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                <div className={`h-full transition-all duration-500 ${passwordStrength === 'Weak' ? 'w-1/3 bg-red-400' :
+                                                        passwordStrength === 'Medium' ? 'w-2/3 bg-yellow-400' :
+                                                            'w-full bg-green-400'
+                                                    }`} />
+                                            </div>
+                                            <p className={`text-xs font-medium text-right ${passwordStrength === 'Weak' ? 'text-red-500 dark:text-red-400' :
+                                                    passwordStrength === 'Medium' ? 'text-yellow-600 dark:text-yellow-500' :
+                                                        'text-green-600 dark:text-green-500'
+                                                }`}>
+                                                {passwordStrength === 'Weak' ? 'Weak Password' :
+                                                    passwordStrength === 'Medium' ? 'Good Password' :
+                                                        'Strong Password'}
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <button

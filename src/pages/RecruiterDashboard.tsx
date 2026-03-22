@@ -556,14 +556,14 @@ const RecruiterDashboard = () => {
                     .select('id')
                     .eq('project_id', projectId)
                     .eq('student_id', candidateId)
-                    .single();
+                    .maybeSingle();
 
                 if (existingThread) {
                     threadIdToOpen = existingThread.id;
                 } else {
                     const { data: newThread } = await supabase
                         .from('message_threads')
-                        .insert([{ project_id: projectId, student_id: candidateId, status: 'accepted' }])
+                        .insert([{ project_id: projectId, student_id: candidateId, recruiter_id: userId, status: 'accepted' }])
                         .select('id').single();
                     if (newThread) threadIdToOpen = newThread.id;
                 }
@@ -633,14 +633,14 @@ const RecruiterDashboard = () => {
             .select('id')
             .eq('project_id', projectId)
             .eq('student_id', candidateId)
-            .single();
+            .maybeSingle();
 
         if (existingThread) {
             threadIdToOpen = existingThread.id;
         } else {
             const { data: newThread } = await supabase
                 .from('message_threads')
-                .insert([{ project_id: projectId, student_id: candidateId, status: 'completed' }])
+                .insert([{ project_id: projectId, student_id: candidateId, recruiter_id: userId, status: 'completed' }])
                 .select('id').single();
             if (newThread) threadIdToOpen = newThread.id;
         }

@@ -34,7 +34,7 @@ export default function ApplicationModal({ isOpen, onClose, projectId, project: 
     const project = passedProject || MOCK_PROJECTS.find(p => p.id === projectId);
 
     const [coverLetter, setCoverLetter] = useState('');
-    const [portfolioUrl, setPortfolioUrl] = useState('');
+    const [portfolioUrl, setPortfolioUrl] = useState(localStorage.getItem('studentResumeUrl') || '');
     const [availability, setAvailability] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -74,7 +74,7 @@ export default function ApplicationModal({ isOpen, onClose, projectId, project: 
                 .select('id')
                 .eq('project_id', projectId)
                 .eq('student_id', userId)
-                .single();
+                .maybeSingle();
 
             if (existingApp) {
                 setError('You have already applied to this project.');
@@ -121,7 +121,7 @@ export default function ApplicationModal({ isOpen, onClose, projectId, project: 
         
         try {
             // We need a brief representation of the user. Ideally from a DB, but we will mock briefly if not available.
-            const { data: profile } = await supabase.from('profiles').select('skills, domain, college').eq('id', userId).single();
+            const { data: profile } = await supabase.from('profiles').select('skills, domain, college').eq('id', userId).maybeSingle();
             const profileStr = profile ? `Domain: ${profile.domain}, Skills: ${profile.skills?.join(', ')}, College: ${profile.college}` : 'Standard Student Profile';
             
             const result = await calculateMatchScore(
@@ -262,7 +262,7 @@ export default function ApplicationModal({ isOpen, onClose, projectId, project: 
 
                         <div>
                             <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                                Relevant Links / Portfolio <span className="text-slate-400 font-normal">(Optional)</span>
+                                Resume Link / Portfolio <span className="text-slate-400 font-normal">(Optional)</span>
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

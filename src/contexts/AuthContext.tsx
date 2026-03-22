@@ -5,6 +5,7 @@ export type UserRole = 'student' | 'recruiter' | null;
 interface AuthContextType {
     userRole: UserRole;
     userName: string;
+    userEmail: string;
     userPhoto: string | null;
     userId: string | null;
     isAuthenticated: boolean;
@@ -25,6 +26,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [userRole, setUserRole] = useState<UserRole>(null);
     const [userName, setUserName] = useState<string>('');
+    const [userEmail, setUserEmail] = useState<string>('');
     const [userPhoto, setUserPhoto] = useState<string | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -34,6 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Hydrate initial state from localStorage for UX (so it doesn't flash logged out)
         const storedRole = localStorage.getItem('userRole') as UserRole;
         const storedName = localStorage.getItem('userName') || '';
+        const storedEmail = localStorage.getItem('userEmail') || '';
         const storedPhoto = localStorage.getItem('userPhoto');
         const storedId = localStorage.getItem('userId');
         const storedCompleted = localStorage.getItem('hasCompletedProfile') === 'true';
@@ -41,6 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (storedRole) {
             setUserRole(storedRole);
             setUserName(storedName);
+            setUserEmail(storedEmail);
             setUserPhoto(storedPhoto);
             setUserId(storedId);
             setIsAuthenticated(true);
@@ -63,6 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // Sync to our local storage system and states
                 localStorage.setItem('userRole', finalRole);
                 localStorage.setItem('userName', name);
+                localStorage.setItem('userEmail', user.email || '');
                 localStorage.setItem('userId', user.id);
                 if (photo) localStorage.setItem('userPhoto', photo);
                 localStorage.removeItem('pendingAuthRole'); // clean up
@@ -98,6 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 setUserRole(finalRole);
                 setUserName(name);
+                setUserEmail(user.email || '');
                 setUserPhoto(photo);
                 setUserId(user.id);
                 setIsAuthenticated(true);
@@ -106,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 localStorage.clear();
                 setUserRole(null);
                 setUserName('');
+                setUserEmail('');
                 setUserPhoto(null);
                 setUserId(null);
                 setIsAuthenticated(false);
@@ -242,6 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             localStorage.clear();
             setUserRole(null);
             setUserName('');
+            setUserEmail('');
             setUserPhoto(null);
             setUserId(null);
             setIsAuthenticated(false);
@@ -262,6 +270,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (signInError) {
             throw new Error("Incorrect current password.");
         }
+
+        // Workaround for Supabase GoTrue issue: "Lock broken by another request with the 'steal' option"
+        // This happens because signInWithPassword and updateUser trigger back-to-back session token refreshes.
+        // Pausing briefly allows the first lock to release before requesting the second.
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         const { error: updateError } = await supabase.auth.updateUser({
             password: newPassword
@@ -284,7 +297,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return (
         <AuthContext.Provider value={{
-            userRole, userName, userPhoto, userId, isAuthenticated, hasCompletedProfile,
+            userRole, userName, userEmail, userPhoto, userId, isAuthenticated, hasCompletedProfile,
             login, loginWithGoogle, loginWithEmail, registerWithEmail, verifyOtp,
             logout, updateUserPhoto, completeProfile, updatePassword
         }}>

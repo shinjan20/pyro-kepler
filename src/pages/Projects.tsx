@@ -96,7 +96,7 @@ const Projects = () => {
                     .from('profiles')
                     .select('bookmarked_projects')
                     .eq('id', userId)
-                    .single();
+                    .maybeSingle();
                 
                 if (profileData && profileData.bookmarked_projects) {
                     setBookmarkedProjectIds(profileData.bookmarked_projects);
